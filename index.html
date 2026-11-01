@@ -15,7 +15,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 6c15 0 27 12 27 27 0 14-11 25-27 25S5 47 5 33C5 18 17 6 32 6z' fill='%23ff8a2b'/%3E%3Cellipse cx='22' cy='19' rx='9' ry='5.5' fill='%23fff' opacity='.5'/%3E%3Ccircle cx='24' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='41' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='25.5' cy='35' r='3' fill='%2324123a'/%3E%3Ccircle cx='42.5' cy='35' r='3' fill='%2324123a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Chakra+Petch:wght@500;700&family=Figtree:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;600;700;800&display=swap">
 <style>
 /* Layout: full-bleed 3D stadium canvas; HUD pinned to the screen edges; menus are glass cards
    docked left over a live bot match. Single committed look: a gummy dusk stadium. */
@@ -31,7 +31,7 @@
   --glass-line: rgba(255, 244, 230, 0.16);
   --display: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
   --ui: "Figtree", "Segoe UI", system-ui, sans-serif;
-  --num: "Chakra Petch", ui-monospace, "SF Mono", Menlo, monospace;
+  --num: "Figtree", "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
@@ -44,37 +44,67 @@ body {
 #stage { position: fixed; inset: 0; background: var(--plum); }
 #stage canvas { display: block; width: 100%; height: 100%; outline: none; }
 
-/* ---------- HUD ---------- */
+/* ---------- HUD: everything is jelly ---------- */
 .hud { position: fixed; inset: 0; pointer-events: none; }
+/* the score: a gummy blob per team with eyes on top, both looking at the clock gumdrop in the middle */
 .scoreboard {
-  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%;
-  transform: translateX(-50%); display: flex; align-items: stretch;
-  filter: drop-shadow(0 6px 16px rgba(20, 8, 40, 0.4));
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%;
+  transform: translateX(-50%); display: flex; align-items: flex-start; gap: 10px;
 }
-.sb-team { display: flex; align-items: center; gap: 10px; padding: 6px 14px; color: #fff; }
-.sb-team.a { background: var(--berry); border-radius: 18px 0 0 18px; }
-.sb-team.b { background: var(--tang); border-radius: 0 18px 18px 0; }
-.sb-score { font-family: var(--num); font-weight: 700; font-size: 30px; line-height: 1; min-width: 1.3ch; text-align: center; font-variant-numeric: tabular-nums; }
-.sb-name { font-weight: 800; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.92; }
+.sb-team { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sb-blob {
+  --c: #6f9dff; --c2: #2f62e0;
+  position: relative; width: 70px; height: 54px; margin-top: 12px; display: grid; place-items: center;
+  border-radius: 52% 48% 46% 54% / 60% 56% 44% 40%;
+  background:
+    radial-gradient(ellipse 30% 20% at 30% 24%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(ellipse 85% 80% at 50% 30%, var(--c) 50%, var(--c2) 100%);
+  box-shadow: 0 6px 12px rgba(20, 8, 40, 0.35), inset 0 -7px 10px rgba(20, 8, 40, 0.3), inset 0 3px 5px rgba(255, 255, 255, 0.3);
+  transform-origin: 50% 100%;
+}
+.sb-team.b .sb-blob { --c: #ffa04f; --c2: #e0640c; border-radius: 48% 52% 54% 46% / 56% 60% 40% 44%; }
+.sb-eyes { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
+.sb-eyes i {
+  position: relative; width: 17px; height: 17px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 8, 40, 0.35); animation: blink 5.3s infinite;
+}
+.sb-team.b .sb-eyes i { animation-delay: -2.1s; }
+.sb-eyes i::after { content: ""; position: absolute; width: 50%; height: 50%; top: 30%; left: 40%; border-radius: 50%; background: var(--plum); }
+.sb-team.b .sb-eyes i::after { left: 10%; }
+@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
+.sb-score { font-family: var(--display); font-size: 32px; line-height: 1; color: #fff; margin-top: 6px; text-shadow: 0 2px 0 rgba(20, 8, 40, 0.35); }
+.sb-name { font-weight: 800; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream); text-shadow: 0 1px 4px rgba(20, 8, 40, 0.8); }
+.sb-blob.boing { animation: boing 0.9s ease-out both; }
+@keyframes boing {
+  0% { transform: scale(1); } 16% { transform: scale(1.32, 0.7); } 34% { transform: scale(0.82, 1.24); }
+  52% { transform: scale(1.12, 0.9); } 70% { transform: scale(0.95, 1.05); } 100% { transform: scale(1); }
+}
 .sb-clock {
-  background: var(--plum); color: var(--cream); padding: 6px 16px; min-width: 4.6ch;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--num); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums;
+  margin-top: 20px; padding: 8px 14px 6px; border-radius: 22px 22px 26px 26px / 18px 18px 26px 26px; white-space: nowrap;
+  background: radial-gradient(ellipse 45% 35% at 32% 22%, #fff, rgba(255, 255, 255, 0) 80%), var(--cream);
+  box-shadow: 0 6px 12px rgba(20, 8, 40, 0.35), inset 0 -4px 6px rgba(120, 70, 120, 0.28);
+  color: var(--plum); font-family: var(--display); font-size: 24px; line-height: 1;
 }
-.sb-clock.ot { color: var(--jelly); }
+/* Bagel Fat One has no fixed-width digits, so each character gets its own box and the clock never shuffles */
+.sb-clock b { display: inline-block; width: 0.66em; text-align: center; font-weight: 400; }
+.sb-clock b.sep { width: 0.32em; }
+.sb-clock.ot { background: radial-gradient(ellipse 45% 35% at 32% 22%, #ffd0e4, rgba(255, 255, 255, 0) 80%), var(--jelly); color: #fff; }
 
 .feed {
   position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px);
   right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column;
   align-items: flex-end; gap: 6px; max-width: min(46vw, 320px);
 }
+/* the feed: jelly-bean chips that plop in */
 .feed-item {
-  background: var(--glass); border: 1px solid var(--glass-line); border-radius: 10px;
-  padding: 5px 10px; font-size: 13px; font-weight: 600; animation: feedIn 0.25s ease-out both;
+  background: radial-gradient(ellipse 40% 60% at 20% 20%, #fff, rgba(255, 255, 255, 0) 70%), var(--cream); color: var(--plum);
+  border-radius: 999px; padding: 5px 13px; font-size: 13px; font-weight: 700;
+  box-shadow: 0 4px 12px rgba(20, 8, 40, 0.3), inset 0 -3px 0 rgba(120, 70, 120, 0.16);
+  transform-origin: 100% 50%; animation: feedIn 0.5s ease-out both;
 }
-.feed-item b.t0 { color: #8fb4ff; } .feed-item b.t1 { color: #ffb070; }
-.feed-item.fade { opacity: 0; transition: opacity 0.5s; }
-@keyframes feedIn { from { transform: translateX(14px); opacity: 0; } }
+.feed-item b.t0 { color: #2f62e0; } .feed-item b.t1 { color: #d0600c; }
+.feed-item.fade { opacity: 0; transform: scale(0.9); transition: opacity 0.5s, transform 0.5s; }
+@keyframes feedIn { 0% { transform: scale(0.3, 0.2); opacity: 0; } 45% { transform: scale(1.08, 0.92); opacity: 1; } 70% { transform: scale(0.97, 1.04); } 100% { transform: scale(1); } }
 
 .labels { position: absolute; inset: 0; overflow: hidden; }
 .tag {
@@ -84,72 +114,155 @@ body {
 }
 .tag i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .tag.carry { outline: 2px solid var(--jelly); }
+/* off-screen ball: a pink jelly drop that points at it */
 .ball-arrow {
-  position: absolute; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px;
-  border-radius: 50%; background: var(--cream); color: var(--plum); display: grid; place-items: center;
-  font-weight: 800; font-size: 18px; box-shadow: 0 4px 12px rgba(20, 8, 40, 0.4);
+  position: absolute; left: 0; top: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px;
+  border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  background: radial-gradient(circle at 34% 28%, #fff 0 9%, #ffa3cc 26%, var(--jelly) 75%, #d63f83 100%);
+  box-shadow: 0 4px 12px rgba(20, 8, 40, 0.4); text-shadow: 0 1px 2px rgba(120, 20, 70, 0.6);
 }
 
-.boost {
+/* boost fuel: a jar of goo with a sloshing top, bubbles, and a lid */
+.goo {
   position: absolute; right: max(18px, calc(env(safe-area-inset-right, 0px) + 12px));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: 118px; height: 118px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: 88px; height: 116px;
 }
-.boost svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.boost .track { fill: var(--glass); stroke: rgba(255, 244, 230, 0.15); stroke-width: 12; }
-.boost .fill { fill: none; stroke: var(--tang); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 314.16; transition: stroke 0.2s; }
-.boost.full .fill { stroke: var(--jelly); }
-.boost-num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--num); font-weight: 700; font-size: 34px; font-variant-numeric: tabular-nums; padding-bottom: 12px; }
-.boost-label { position: absolute; left: 0; right: 0; bottom: 28px; text-align: center; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cream-dim); }
+.goo-lid {
+  position: absolute; left: 20px; right: 20px; top: 0; height: 13px; border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(#ff9cc8, #e0478a); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45);
+}
+.goo-jar {
+  position: absolute; left: 0; right: 0; top: 10px; bottom: 0; overflow: hidden;
+  border-radius: 28px 28px 36px 36px / 22px 22px 40px 40px;
+  background: rgba(36, 18, 58, 0.66); border: 2px solid rgba(255, 244, 230, 0.4); box-shadow: 0 8px 16px rgba(20, 8, 40, 0.4);
+}
+.goo-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 33%;
+  background: linear-gradient(#ffa040, #ff6f8e 70%, var(--jelly)); transition: height 0.15s ease-out;
+}
+/* two waves on top of the goo, scrolling in opposite directions */
+.goo-fill::before, .goo-fill::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 9px; margin-bottom: -1px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='9'%3E%3Cpath d='M0 4.5Q10 0 20 4.5T40 4.5V9H0z' fill='%23ffa040'/%3E%3C/svg%3E") repeat-x;
+  background-size: 40px 9px; animation: slosh 1.7s linear infinite;
+}
+.goo-fill::after { height: 12px; opacity: 0.45; background-size: 52px 12px; animation-duration: 2.9s; animation-direction: reverse; }
+@keyframes slosh { to { background-position: 40px 0; } }
+.goo.burn .goo-fill::before { animation-duration: 0.45s; }
+.goo.burn .goo-fill::after { animation-duration: 0.7s; }
+.goo-bubbles { position: absolute; inset: 0; overflow: hidden; }
+.goo-bubbles i { position: absolute; bottom: -8px; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); animation: rise 2.6s linear infinite; }
+.goo-bubbles i:nth-child(1) { left: 18%; }
+.goo-bubbles i:nth-child(2) { left: 46%; width: 4px; height: 4px; animation-delay: -0.9s; animation-duration: 2.1s; }
+.goo-bubbles i:nth-child(3) { left: 70%; animation-delay: -1.7s; animation-duration: 3.1s; }
+.goo-bubbles i:nth-child(4) { left: 32%; width: 3px; height: 3px; animation-delay: -2.3s; }
+.goo.burn .goo-bubbles i { animation-duration: 0.9s; }
+@keyframes rise { to { transform: translateY(-120px); } }
+.goo-shine { position: absolute; left: 9px; top: 12px; width: 9px; height: 52%; border-radius: 99px; background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0)); }
+.goo-num {
+  position: absolute; left: 0; right: 0; top: 38px; text-align: center;
+  font-family: var(--display); font-size: 32px; line-height: 1; color: var(--cream);
+  text-shadow: 0 2px 0 var(--plum), 0 0 10px rgba(36, 18, 58, 0.7);
+}
+.goo-label {
+  position: absolute; left: 0; right: 0; top: 73px; text-align: center; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--cream); text-shadow: 0 1px 3px rgba(36, 18, 58, 0.9);
+}
+.goo.full .goo-jar { border-color: #ffb3d4; box-shadow: 0 0 18px rgba(255, 95, 162, 0.75), 0 8px 16px rgba(20, 8, 40, 0.4); }
+.goo.empty .goo-fill::before, .goo.empty .goo-fill::after { display: none; }
 
+/* spit power: a goo tube */
 .charge {
   position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22%);
-  transform: translateX(-50%); width: 200px; height: 12px; border-radius: 99px;
-  background: var(--glass); border: 1px solid var(--glass-line); overflow: hidden;
+  transform: translateX(-50%); width: 210px; height: 18px; border-radius: 99px; padding: 3px;
+  background: rgba(36, 18, 58, 0.66); border: 2px solid rgba(255, 244, 230, 0.4);
 }
-.charge span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--tang), var(--jelly)); }
-.charge-label { position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.charge span { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--tang), var(--jelly)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35); }
+.charge-label { position: absolute; left: 0; right: 0; top: -22px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: 0 1px 4px rgba(20, 8, 40, 0.8); }
 
+/* spikes: the urchin pops its spikes out when they are ready or in use, and pulls them in to reload */
 .spikes {
-  position: absolute; right: max(150px, calc(env(safe-area-inset-right, 0px) + 146px));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); width: 156px;
+  --fill: 100%;
+  position: absolute; right: max(120px, calc(env(safe-area-inset-right, 0px) + 114px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); display: flex; align-items: center; gap: 8px;
 }
-.spikes-label { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; color: var(--cream-dim); font-variant-numeric: tabular-nums; }
-.spikes-bar { height: 12px; border-radius: 99px; background: var(--glass); border: 1px solid var(--glass-line); overflow: hidden; }
-.spikes-bar span { display: block; height: 100%; width: 100%; background: rgba(255, 244, 230, 0.35); }
+.spikes-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap;
+  color: var(--cream-dim); font-variant-numeric: tabular-nums; background: var(--glass); padding: 5px 10px; border-radius: 99px;
+}
+.urchin { position: relative; width: 58px; height: 58px; }
+.urchin svg { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(20, 8, 40, 0.4)); transition: transform 0.25s cubic-bezier(.2, 1.6, .4, 1); }
+.urchin polygon { fill: #7a5d92; stroke: rgba(255, 244, 230, 0.35); stroke-width: 1.2; stroke-linejoin: round; transition: fill 0.2s; }
+.urchin-core {
+  position: absolute; inset: 13px; border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fff 0 12%, var(--cream) 30%, #e8d4e6 58%, transparent 60%),
+    conic-gradient(var(--jelly) var(--fill), rgba(36, 18, 58, 0.8) 0);
+}
+.spikes.wait .urchin svg, .spikes.reload .urchin svg { transform: scale(0.74); }
+.spikes.ready .urchin polygon { fill: var(--jelly); }
+.spikes.ready .urchin svg { animation: bristle 1.6s ease-in-out infinite; }
 .spikes.ready .spikes-label { color: var(--jelly); }
-.spikes.ready .spikes-bar span { background: var(--jelly); }
+.spikes.active .urchin polygon { fill: #ffa040; }
+.spikes.active .urchin svg { transform: scale(1.1); animation: spin 3s linear infinite; }
 .spikes.active .spikes-label { color: var(--cream); }
-.spikes.active .spikes-bar span { background: linear-gradient(90deg, var(--tang), var(--jelly)); }
+/* narrow windows: the urchin sits on top of the goo jar, so the key hints along the bottom never run into it */
+@media (max-width: 860px) {
+  .spikes { right: max(16px, calc(env(safe-area-inset-right, 0px) + 10px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); }
+}
+@keyframes bristle { 50% { transform: scale(1.08); } }
+@keyframes spin { from { transform: scale(1.1) rotate(0); } to { transform: scale(1.1) rotate(1turn); } }
 
 .carry-chip {
-  position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22% + 34px);
-  transform: translateX(-50%); font-size: 12px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; background: var(--jelly); color: var(--plum); padding: 4px 12px; border-radius: 99px;
+  position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22% + 36px);
+  transform: translateX(-50%); font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  background: radial-gradient(ellipse 40% 60% at 20% 20%, #ffd0e4, rgba(255, 255, 255, 0) 70%), var(--jelly);
+  color: var(--plum); padding: 5px 13px; border-radius: 99px; box-shadow: 0 4px 12px rgba(20, 8, 40, 0.3);
 }
 
+/* banners (countdown, Drop!, Goal!): gummy letters that land with a wobble */
 .banner {
-  position: absolute; left: 0; right: 0; top: 30%; text-align: center;
-  font-family: var(--display); font-size: clamp(56px, 13vw, 150px); line-height: 0.95; color: var(--cream);
-  text-shadow: 0 6px 0 var(--plum), 0 10px 28px rgba(20, 8, 40, 0.55);
-  padding-inline: 16px;
+  position: absolute; left: 0; right: 0; top: 28%; text-align: center; padding-inline: 16px;
+  font-family: var(--display); font-size: clamp(56px, 13vw, 150px); line-height: 1;
 }
-.banner small { display: block; font-family: var(--ui); font-weight: 800; font-size: clamp(14px, 2.4vw, 22px); letter-spacing: 0.12em; text-transform: uppercase; text-shadow: 0 2px 10px rgba(20, 8, 40, 0.6); margin-top: 10px; }
-.banner.pop { animation: pop 0.55s cubic-bezier(.2, 1.6, .4, 1) both; }
-.banner.t0 { color: #a9c6ff; } .banner.t1 { color: #ffc08a; }
-@keyframes pop { from { transform: scale(0.3); opacity: 0; } 60% { opacity: 1; } }
+.banner .bt {
+  display: inline-block; padding: 0 0.08em; color: transparent;
+  background: linear-gradient(180deg, #fff 10%, var(--cream) 45%, #ffbfdb 100%);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 6px 0 var(--plum)) drop-shadow(0 12px 20px rgba(20, 8, 40, 0.5));
+  transform-origin: 50% 90%;
+}
+.banner.t0 .bt { background-image: linear-gradient(180deg, #eef3ff 10%, #9dbcff 50%, #4a86ff 100%); }
+.banner.t1 .bt { background-image: linear-gradient(180deg, #fff3e6 10%, #ffc48f 50%, #ff8a2b 100%); }
+.banner.splat .bt, .banner.ot .bt { background-image: linear-gradient(180deg, #fff 10%, #ffb3d4 50%, var(--jelly) 100%); }
+.banner small {
+  display: block; font-family: var(--ui); font-weight: 800; font-size: clamp(14px, 2.4vw, 22px); letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--cream); text-shadow: 0 2px 10px rgba(20, 8, 40, 0.7); margin-top: 10px;
+}
+.banner.pop .bt { animation: wobble 0.85s ease-out both; }
+.banner.pop small { animation: rise-in 0.4s 0.15s ease-out both; }
+@keyframes wobble {
+  0% { transform: scale(0.15); opacity: 0; } 22% { transform: scale(1.24, 0.76); opacity: 1; } 40% { transform: scale(0.86, 1.16); }
+  58% { transform: scale(1.07, 0.94); } 76% { transform: scale(0.97, 1.03); } 100% { transform: scale(1); }
+}
+@keyframes rise-in { from { transform: translateY(10px); opacity: 0; } }
 
 .hint {
   position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
   font-size: 12px; font-weight: 600; color: var(--cream-dim); background: var(--glass);
-  border-radius: 10px; padding: 6px 10px; max-width: 60vw;
+  border-radius: 14px; padding: 7px 11px; max-width: 60vw; line-height: 1.9;
   animation: hint-out 0.8s ease 25s forwards; /* restarts every match, since the HUD is hidden in between */
 }
 @keyframes hint-out { to { opacity: 0; visibility: hidden; } }
-.hint kbd { font-family: var(--num); font-weight: 700; color: var(--cream); }
+.hint kbd {
+  font-family: var(--ui); font-weight: 800; font-size: 11px; color: var(--plum); background: var(--cream);
+  border-radius: 6px; padding: 1px 5px; box-shadow: 0 2px 0 rgba(20, 8, 40, 0.45);
+}
 
 /* ---------- Screens (menu, pause, results) ---------- */
 .screen {
-  position: fixed; inset: 0; display: flex; align-items: center; justify-content: flex-start;
+  /* cards are centred with auto margins, not align-items: center, so a card taller than the window scrolls
+     from its top instead of losing its top edge */
+  position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: flex-start;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
   background: linear-gradient(90deg, rgba(36, 18, 58, 0.72) 0%, rgba(36, 18, 58, 0.2) 55%, rgba(36, 18, 58, 0) 100%);
@@ -160,7 +273,7 @@ body {
   width: min(440px, 100%); background: var(--glass); border: 1px solid var(--glass-line);
   border-radius: 28px; padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 18px;
   box-shadow: 0 24px 60px rgba(20, 8, 40, 0.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  margin-left: clamp(0px, 5vw, 64px);
+  margin-left: clamp(0px, 5vw, 64px); margin-block: auto; flex: none;
 }
 .screen.center .card { margin-left: 0; }
 .brand h1 {
@@ -213,7 +326,7 @@ body {
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .row .btn { flex: 1 1 140px; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; color: var(--cream-dim); }
-.keys dt { font-family: var(--num); font-weight: 700; color: var(--cream); white-space: nowrap; }
+.keys dt { font-family: var(--num); font-weight: 800; color: var(--cream); white-space: nowrap; }
 .keys dd { margin: 0; min-width: 0; }
 .rules { margin: 0; font-size: 13px; line-height: 1.5; color: var(--cream-dim); }
 .rules b { color: var(--cream); }
@@ -223,7 +336,8 @@ details.more summary { cursor: pointer; font-size: 13px; font-weight: 700; color
 details.more[open] summary { margin-bottom: 10px; }
 
 .result h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(40px, 9vw, 60px); line-height: 0.95; text-wrap: balance; }
-.final { font-family: var(--num); font-weight: 700; font-size: 44px; display: flex; gap: 14px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.final { font-family: var(--display); font-weight: 400; font-size: 52px; line-height: 1; display: flex; gap: 14px; align-items: baseline; }
+.final span:nth-child(2) { color: var(--cream-dim); }
 .final .a { color: var(--berry); } .final .b { color: var(--tang); }
 .stats-wrap { overflow-x: auto; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -240,13 +354,20 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
   bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); width: 130px; height: 130px; border-radius: 50%;
   background: rgba(36, 18, 58, 0.45); border: 2px solid rgba(255, 244, 230, 0.25); pointer-events: auto; touch-action: none;
 }
-.knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: rgba(255, 244, 230, 0.85); }
+.knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #fff 0 10%, rgba(255, 244, 230, 0.95) 30%, rgba(226, 204, 224, 0.92) 100%); box-shadow: 0 4px 10px rgba(20, 8, 40, 0.35); }
 .tbtns {
   position: absolute; right: max(16px, calc(env(safe-area-inset-right, 0px) + 12px));
   bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); display: grid; grid-template-columns: repeat(2, 64px); gap: 10px; pointer-events: auto;
 }
-.tbtns button { width: 64px; height: 64px; border-radius: 50%; border: 0; font: inherit; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(255, 244, 230, 0.85); color: var(--plum); touch-action: none; }
-.tbtns button.on { background: var(--jelly); }
+/* jelly buttons: a glossy highlight, and they squash when pressed */
+.tbtns button {
+  width: 64px; height: 64px; border-radius: 50%; border: 0; font: inherit; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+  background: radial-gradient(circle at 34% 28%, #fff 0 10%, rgba(255, 244, 230, 0.94) 30%, rgba(226, 204, 224, 0.9) 100%); color: var(--plum); touch-action: none;
+  box-shadow: 0 5px 12px rgba(20, 8, 40, 0.35), inset 0 -4px 6px rgba(120, 70, 120, 0.25); transition: transform 0.08s;
+}
+.tbtns button:active, .tbtns button.on { transform: scale(1.06, 0.88); }
+.tbtns button.on { background: radial-gradient(circle at 34% 28%, #ffe0ee 0 10%, #ff9cc8 32%, var(--jelly) 100%); }
+.tbtns button.jump { background: radial-gradient(circle at 34% 28%, #ffe0ee 0 10%, #ff9cc8 32%, var(--jelly) 100%); }
 .tbtns button.jump { grid-column: 2; }
 /* the Spikes button is its own timer on touch screens: a ring that empties while the spikes are out and refills while they reload */
 .tbtns #tSpike { --fill: 100%; background: radial-gradient(circle, rgba(255, 244, 230, 0.92) 0 62%, transparent 63%), conic-gradient(var(--jelly) var(--fill), rgba(42, 20, 56, 0.35) 0); font-variant-numeric: tabular-nums; }
@@ -261,18 +382,17 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
 
 @media (max-width: 560px) {
   .sb-name { display: none; }
-  .sb-score { font-size: 24px; }
-  .sb-clock { font-size: 20px; }
-  .boost { width: 92px; height: 92px; }
-  .boost-num { font-size: 26px; }
-  .boost-label { bottom: 21px; }
+  .scoreboard { transform: translateX(-50%) scale(0.8); transform-origin: 50% 0; }
+  .goo { transform: scale(0.8); transform-origin: 100% 100%; }
   .tbtns { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
-  .feed { top: calc(env(safe-area-inset-top, 0px) + 64px); }
+  .feed { top: calc(env(safe-area-inset-top, 0px) + 78px); }
+  .final { font-size: 44px; }
   .card { padding: 20px 18px 18px; border-radius: 22px; margin-left: 0; }
   .screen { justify-content: center; background: rgba(36, 18, 58, 0.5); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .banner.pop, .feed-item { animation: none; }
+  .banner.pop .bt, .banner.pop small, .feed-item, .sb-blob.boing, .sb-eyes i,
+  .goo-fill::before, .goo-fill::after, .goo-bubbles i, .spikes .urchin svg { animation: none !important; }
   .btn { transition: none; }
 }
 </style>
@@ -280,20 +400,39 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
 <div id="stage"></div>
 
 <div class="hud" id="hud" hidden>
-  <div class="scoreboard" aria-live="polite">
-    <div class="sb-team a"><span class="sb-name">Blueberry</span><span class="sb-score" id="scoreA">0</span></div>
+  <!-- the score: one gummy blob per team, peeking at the clock -->
+  <div class="scoreboard">
+    <div class="sb-team a" aria-live="polite">
+      <div class="sb-blob"><span class="sb-eyes" aria-hidden="true"><i></i><i></i></span><span class="sb-score" id="scoreA">0</span></div>
+      <span class="sb-name">Blueberry</span>
+    </div>
     <div class="sb-clock" id="clock">3:00</div>
-    <div class="sb-team b"><span class="sb-score" id="scoreB">0</span><span class="sb-name">Tangerine</span></div>
+    <div class="sb-team b" aria-live="polite">
+      <div class="sb-blob"><span class="sb-eyes" aria-hidden="true"><i></i><i></i></span><span class="sb-score" id="scoreB">0</span></div>
+      <span class="sb-name">Tangerine</span>
+    </div>
   </div>
   <div class="feed" id="feed"></div>
   <div class="labels" id="labels"></div>
   <div class="carry-chip" id="carryChip" hidden>Ball stuck on you &middot; press again to spit</div>
   <div class="charge" id="charge" hidden><div class="charge-label">Spit power</div><span id="chargeFill"></span></div>
-  <div class="spikes" id="spikes" hidden><div class="spikes-label" id="spikesLabel">Spikes ready</div><div class="spikes-bar"><span id="spikesFill"></span></div></div>
-  <div class="boost" id="boost">
-    <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="50"></circle><circle class="fill" id="boostFill" cx="60" cy="60" r="50"></circle></svg>
-    <div class="boost-num" id="boostNum">33</div>
-    <div class="boost-label">Boost</div>
+  <!-- spikes: an urchin whose ring shows the time left out, or the reload -->
+  <div class="spikes" id="spikes" hidden>
+    <div class="spikes-label" id="spikesLabel">Spikes ready</div>
+    <div class="urchin" aria-hidden="true">
+      <svg viewBox="0 0 64 64"><polygon points="32.0,1.0 37.4,11.7 47.5,5.2 46.8,17.2 58.8,16.5 52.3,26.6 63.0,32.0 52.3,37.4 58.8,47.5 46.8,46.8 47.5,58.8 37.4,52.3 32.0,63.0 26.6,52.3 16.5,58.8 17.2,46.8 5.2,47.5 11.7,37.4 1.0,32.0 11.7,26.6 5.2,16.5 17.2,17.2 16.5,5.2 26.6,11.7"></polygon></svg>
+      <span class="urchin-core"></span>
+    </div>
+  </div>
+  <!-- boost fuel: a jar of goo that sloshes while you burn it -->
+  <div class="goo" id="boost">
+    <div class="goo-lid"></div>
+    <div class="goo-jar">
+      <div class="goo-fill" id="boostFill"><span class="goo-bubbles"><i></i><i></i><i></i><i></i></span></div>
+      <span class="goo-shine"></span>
+    </div>
+    <div class="goo-num" id="boostNum">33</div>
+    <div class="goo-label">Goo</div>
   </div>
   <div class="hint" id="hint"><kbd>W</kbd>/<kbd>S</kbd> drive &middot; <kbd>A</kbd>/<kbd>D</kbd> steer &middot; <kbd>Space</kbd> jump, flip &middot; <kbd>Shift</kbd> boost &middot; <kbd>Q</kbd>/<kbd>E</kbd> roll &middot; <span id="hintSpike"><kbd>F</kbd> spikes &middot; </span><kbd>C</kbd> cam</div>
   <div class="banner" id="banner" hidden></div>
@@ -370,14 +509,14 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
         <dt>W / S</dt><dd>Drive and reverse. In the air: tip the nose down / up</dd>
         <dt>A / D</dt><dd>Steer. In the air: turn left / right</dd>
         <dt>Space / right click</dt><dd>Jump (hold to jump higher). Again in the air: double jump, or flip toward the direction you hold</dd>
-        <dt>Shift / left click</dt><dd>Boost: works on the ground and in the air, so you can fly</dd>
+        <dt>Shift / left click</dt><dd>Boost: burns the goo in your jar, on the ground or in the air, so you can fly</dd>
         <dt>Q / E &middot; X</dt><dd>Air roll left / right &middot; hold X to roll with A/D (and powerslide on the ground)</dd>
         <dt>F / middle click</dt><dd>With Spikes on: pop your spikes out for up to 5 s (20 s reload). Carrying the ball: press again, hold to charge a spit, release to fire</dd>
         <dt>C</dt><dd>Ball cam on / off</dd>
         <dt>Esc / P &middot; M</dt><dd>Pause &middot; mute</dd>
         <dt>Gamepad</dt><dd>RT / LT drive, stick steers and pitches, A jump, B boost, X air roll, LB / RB roll, RB spikes when Spikes is on, Y cam</dd>
       </dl>
-      <p class="rules" style="margin-top:12px">Blobs drive on the floor, walls and ramps, flip, and fly on boost. Hit the ball with speed to hit it hard. Big pads refill boost, small ones top it up. Ram an opponent at supersonic speed (white streaks behind you) and you <b>splat</b> them; they come back near their end 3 seconds later. In <b>Sinkhole</b> the goals are holes in the floor: the jelly over a hole swallows the ball but throws blobs back up, so you can't park on it, and a bounce gives you your flip back. With <b>Spikes</b> on, the ball sticks to a blob whose spikes are out: carry it into their goal (in Sinkhole, onto their hole to dunk it) or spit it. Bump the carrier to knock it loose.</p>
+      <p class="rules" style="margin-top:12px">Blobs drive on the floor, walls and ramps, flip, and fly on boost. Hit the ball with speed to hit it hard. Gumdrops fill your goo jar back up, goo drops top it up. Ram an opponent at supersonic speed (white streaks behind you) and you <b>splat</b> them; they come back near their end 3 seconds later. In <b>Sinkhole</b> the goals are holes in the floor: the jelly over a hole swallows the ball but throws blobs back up, so you can't park on it, and a bounce gives you your flip back. With <b>Spikes</b> on, the ball sticks to a blob whose spikes are out: carry it into their goal (in Sinkhole, onto their hole to dunk it) or spit it. Bump the carrier to knock it loose.</p>
     </details>
     <span class="chip" id="gpuChip">Starting renderer&hellip;</span>
   </div>
@@ -887,6 +1026,8 @@ function makeGooMaterial(hex, opacity = 0.85, extra = {}) {
   });
 }
 
+import { texture as tslTexture, vertexColor } from 'three/tsl';
+
 // ---------- renderer (WebGPU, with Three's automatic WebGL2 fallback) ----------
 let renderer;
 function makeRenderer(forceWebGL) {
@@ -1026,7 +1167,15 @@ function drawFloor(withText) {
   g.rect(X(-GW), Z(-HL - F.goalD), F.goalW * S, (F.goalD + 1) * S);
   g.rect(X(-GW), Z(HL - 1), F.goalW * S, (F.goalD + 1) * S);
   g.clip();
-  for (let i = 0; i * 16 < FLOOR_EZ * 2; i++) { g.fillStyle = i % 2 ? '#a6dcc0' : '#93d1b1'; g.fillRect(0, i * 16 * S, W, 16 * S); }
+  // marshmallow tiles: soft square pillows in two minty shades, lit from one corner, with seams between them
+  g.fillStyle = '#7fbf9f'; g.fillRect(0, 0, W, H);
+  const T = 12;
+  for (let iz = -14; iz <= 14; iz++) for (let ix = -10; ix <= 10; ix++) {
+    const x0 = ix * T - T / 2, z0 = iz * T - T / 2, odd = (ix + iz) & 1;
+    const gr = g.createLinearGradient(X(x0), Z(z0), X(x0 + T), Z(z0 + T));
+    gr.addColorStop(0, odd ? '#c8eedb' : '#b7e5cd'); gr.addColorStop(0.55, odd ? '#ade1c6' : '#a0d9bc'); gr.addColorStop(1, odd ? '#97d3b4' : '#8bcaa9');
+    g.fillStyle = gr; g.beginPath(); g.roundRect(X(x0 + 0.45), Z(z0 + 0.45), (T - 0.9) * S, (T - 0.9) * S, 3 * S); g.fill();
+  }
   let gr = g.createLinearGradient(0, Z(-HL), 0, Z(-30));
   gr.addColorStop(0, 'rgba(74,134,255,0.34)'); gr.addColorStop(1, 'rgba(74,134,255,0)');
   g.fillStyle = gr; g.fillRect(0, 0, W, Z(-30));
@@ -1091,11 +1240,11 @@ Promise.race([document.fonts.load(`80px "Bagel Fat One"`), new Promise((r) => se
   .then(() => { drawFloor(true); floorTex.needsUpdate = true; })
   .catch(() => {});
 
-// ---------- the arena shell: ramps up from the floor, walls, ramps into a glass ceiling ----------
+// ---------- the arena shell: ramps up from the floor, walls, ramps into a jelly ceiling ----------
 // Swept along arenaOutline() so it matches the collision field exactly. The goal mouths are cut out of the
 // back walls below the crossbar, and small caps close the cut ends of the ramp beside them.
 const OUTLINE = arenaOutline(6, 6);
-const AD_TOP = F.goalH - 1.7, STRIPE_TOP = F.goalH - 1.0;
+const AD_TOP = F.goalH - 2.3, STRIPE_TOP = F.goalH - 1.0; // icing band, then a candy rope, then jelly
 const _tint = new THREE.Color();
 const endTint = (z, c, k) => { const t = clamp(z / HL, -1, 1); return c.lerp(_tint.set(TEAM[t < 0 ? 0 : 1].color), Math.pow(Math.abs(t), 1.6) * k); };
 // profile samples across the boundary: [outward offset, height, normal along the outline normal, normal y]
@@ -1137,8 +1286,10 @@ function sweep(profile, { uScale = 1 / 9, vScale = 1 / 9, v0 = 0, color, cut = t
   geo.setIndex(idx);
   return geo;
 }
-const RAMP_LO = new THREE.Color('#93d1b1'), RAMP_HI = new THREE.Color('#c48ad9');
+const RAMP_LO = new THREE.Color('#93d1b1'), RAMP_HI = new THREE.Color('#c48ad9'), RAMP_LO_PINK = new THREE.Color('#efc9e4');
 const rampColor = (x, y, z, c) => endTint(z, c.copy(RAMP_LO).lerp(RAMP_HI, clamp(y / RAMP, 0, 1) ** 2), 0.45);
+// Sinkhole's ramps start from its pink candy floor instead of the mint marshmallow one
+const rampColorPink = (x, y, z, c) => endTint(z, c.copy(RAMP_LO_PINK).lerp(RAMP_HI, clamp(y / RAMP, 0, 1) ** 1.5), 0.4);
 // the cut ends of the ramp at the goal posts
 function mouthCaps() {
   const pos = [], nor = [], col = [], idx = [], c = new THREE.Color(), steps = 10;
@@ -1158,123 +1309,239 @@ function mouthCaps() {
   geo.setIndex(idx);
   return geo;
 }
-// a seamless tile of hexagon outlines for the glass (flat-topped, 3r x sqrt(3) r)
-const hexTex = (() => {
-  const r = 56, W = 3 * r, H = 97, c = document.createElement('canvas');
-  c.width = W; c.height = H;
+// a seamless tile of jelly for the walls and ceiling: a faint body with air bubbles and sugar specks
+// suspended in it and two soft bands of light (the colour comes from the vertex tint)
+const JELLY_TILE = 36; // world units per tile
+const jellyTex = (() => {
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
   const g = c.getContext('2d');
-  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 3;
-  for (const [cx, cy] of [[0, 0], [0, H], [W, 0], [W, H], [1.5 * r, H / 2]]) {
-    g.beginPath();
-    for (let i = 0; i <= 6; i++) { const a = (i / 6) * TAU; g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
-    g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.13)'; g.fillRect(0, 0, S, S);
+  let seed = 9;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // draws at (x, y) and at its wrapped copies, so the tile repeats without seams
+  const wrap = (x, y, r, draw) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) if (x + dx > -r && x + dx < S + r && y + dy > -r && y + dy < S + r) draw(x + dx, y + dy); };
+  // light bands: wavy and soft, one period per tile so they join up
+  for (const [y0, amp, w, a] of [[0.3, 18, 50, 0.13], [0.74, 12, 28, 0.09]]) {
+    for (let x = 0; x < S; x += 2) {
+      const y = y0 * S + Math.sin((x / S) * TAU) * amp;
+      const gr = g.createLinearGradient(0, y - w, 0, y + w);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, `rgba(255,255,255,${a})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(x, y - w, 2, w * 2);
+    }
+  }
+  // air bubbles caught in the jelly: a soft bead with a bright rim and a thin crescent of light
+  for (let i = 0; i < 46; i++) {
+    const x = rnd() * S, y = rnd() * S, r = 3 + rnd() ** 2.6 * 20;
+    wrap(x, y, r + 2, (bx, by) => {
+      const gr = g.createRadialGradient(bx - r * 0.2, by - r * 0.25, 0, bx, by, r);
+      gr.addColorStop(0, 'rgba(255,255,255,0.1)'); gr.addColorStop(0.75, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.95, 'rgba(255,255,255,0.4)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(bx, by, r, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = Math.max(1, r * 0.16); g.lineCap = 'round';
+      g.beginPath(); g.arc(bx, by, r * 0.68, -2.7, -1.75); g.stroke();
+    });
+  }
+  // sugar specks
+  for (let i = 0; i < 260; i++) {
+    const x = rnd() * S, y = rnd() * S, r = 0.7 + rnd() * 1.8;
+    wrap(x, y, r, (bx, by) => { g.fillStyle = `rgba(255,255,255,${(0.2 + rnd() * 0.35).toFixed(2)})`; g.beginPath(); g.arc(bx, by, r, 0, TAU); g.fill(); });
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
 })();
-// LED ad boards along the bottom of the walls
+// a twisted candy rope along the top of the icing: cream and pink stripes, darker toward its edges
+const ropeTex = (() => {
+  const W = 128, H = 64, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff4e6'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#ff5fa2';
+  for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(k * W, H); g.lineTo(k * W + W * 0.45, H); g.lineTo(k * W + W * 0.95, 0); g.lineTo(k * W + W * 0.5, 0); g.closePath(); g.fill(); }
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, 'rgba(60,20,70,0.45)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.25)'); gr.addColorStop(0.55, 'rgba(255,255,255,0)'); gr.addColorStop(1, 'rgba(60,20,70,0.5)');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+})();
+// the icing band along the bottom of the walls: dripping frosting with sprinkles over candy labels
 const adCanvas = document.createElement('canvas');
 adCanvas.width = 2048; adCanvas.height = 192;
 const adTex = new THREE.CanvasTexture(adCanvas);
 adTex.colorSpace = THREE.SRGBColorSpace; adTex.wrapS = THREE.RepeatWrapping; adTex.anisotropy = 8;
-function paintAd() {
+let icingMode = null; // which arena the band's second label names (setArenaMode repaints it on a switch)
+function paintIcing() {
+  icingMode = arenaMode.holes;
   const g = adCanvas.getContext('2d'), W = adCanvas.width, H = adCanvas.height;
-  g.fillStyle = '#2d1848'; g.fillRect(0, 0, W, H);
-  const words = [['GLOOPBALL', '#fff4e6'], ['SINKHOLE', '#ffc08a'], ['STAY GOOEY', '#a9c6ff'], ['BOING', '#ff8fc4']];
+  let seed = 21;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // the wall behind: dark berry jam
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#4a2470'); bg.addColorStop(1, '#2a1440');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // candy labels: a pill per word, each its own flavour
+  const words = [['GLOOPBALL', '#fff4e6', '#ff5fa2'], [arenaMode.holes ? 'SINKHOLE' : 'CLASSIC', '#ffe07a', '#ff8a2b'], ['STAY GOOEY', '#7de3c3', '#4a86ff'], ['BOING', '#ffb8d9', '#ff5fa2']];
   const font = (px) => `${px}px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif`;
-  // shrink the type until the widest word fits its quarter of the board, so words never run into each other
-  g.font = font(112);
-  const widest = Math.max(...words.map(([txt]) => g.measureText(txt).width)), room = W / 4 - 72;
-  if (widest > room) g.font = font(Math.floor((112 * room) / widest));
+  let px = 70;
+  g.font = font(px);
+  const widest = Math.max(...words.map(([txt]) => g.measureText(txt).width)), room = W / 4 - 120;
+  if (widest > room) { px = Math.floor((px * room) / widest); g.font = font(px); }
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  words.forEach(([txt, col], i) => {
-    g.fillStyle = col; g.fillText(txt, ((i + 0.5) / 4) * W, H * 0.54);
-    g.fillStyle = '#ff5fa2'; g.beginPath(); g.arc(((i + 1) / 4) * W, H / 2, 12, 0, TAU); g.fill();
+  const labelY = H * 0.7, labelH = px + 22, labels = [];
+  words.forEach(([txt, fill, rim], i) => {
+    const cx = ((i + 0.5) / 4) * W, w = g.measureText(txt).width + 64, x0 = cx - w / 2, y0 = labelY - labelH / 2;
+    labels.push([x0 - 10, x0 + w + 10]);
+    g.fillStyle = 'rgba(20,6,30,0.35)'; g.beginPath(); g.roundRect(x0 + 4, y0 + 6, w, labelH, labelH / 2); g.fill();
+    g.fillStyle = fill; g.beginPath(); g.roundRect(x0, y0, w, labelH, labelH / 2); g.fill();
+    g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.roundRect(x0 + labelH * 0.4, y0 + 7, w - labelH * 0.8, 8, 4); g.fill();
+    g.fillStyle = '#24123a'; g.fillText(txt, cx, labelY + 3);
   });
-  g.fillStyle = 'rgba(10,4,20,0.5)';
-  for (let x = 0; x < W; x += 6) g.fillRect(x, 0, 2, H);
-  for (let y = 0; y < H; y += 6) g.fillRect(0, y, W, 2);
+  // frosting along the top, with drips; long drips only between labels
+  const top = H * 0.34, frost = '#ffc2df';
+  g.fillStyle = frost;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(W, 0); g.lineTo(W, top);
+  for (let x = W; x >= 0; x -= 16) g.lineTo(x, top + Math.sin(x * 0.045) * 5 + Math.sin(x * 0.013) * 4);
+  g.closePath(); g.fill();
+  const drips = [];
+  for (let x = 14; x < W - 14; x += 26 + rnd() * 46) {
+    const under = labels.some(([a, b]) => x > a - 14 && x < b + 14);
+    const len = under ? 8 + rnd() * 22 : 20 + rnd() ** 0.7 * (H * 0.62);
+    drips.push([x, 10 + rnd() * 14, len]);
+  }
+  for (const [x, w, len] of drips) {
+    g.fillStyle = frost;
+    g.beginPath(); g.moveTo(x - w / 2 - 6, top - 4); g.quadraticCurveTo(x - w / 2, top + 4, x - w / 2, top + 10);
+    g.lineTo(x - w / 2, top + len); g.arc(x, top + len, w / 2, Math.PI, 0, true); g.lineTo(x + w / 2, top + 10);
+    g.quadraticCurveTo(x + w / 2, top + 4, x + w / 2 + 6, top - 4); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.beginPath(); g.ellipse(x - w * 0.18, top + len - w * 0.05, w * 0.12, w * 0.2, 0, 0, TAU); g.fill();
+  }
+  // a glossy sheen along the top of the frosting
+  const sh = g.createLinearGradient(0, 0, 0, top);
+  sh.addColorStop(0, 'rgba(255,255,255,0.05)'); sh.addColorStop(0.35, 'rgba(255,255,255,0.5)'); sh.addColorStop(0.6, 'rgba(255,255,255,0)');
+  g.fillStyle = sh; g.fillRect(0, 0, W, top);
+  // sprinkles
+  const cols = ['#fff4e6', '#ffe07a', '#7de3c3', '#4a86ff', '#ff8a2b', '#c48ad9'];
+  for (let i = 0; i < 150; i++) {
+    const x = rnd() * W, y = 6 + rnd() * (top - 12), a = rnd() * Math.PI;
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.fillStyle = cols[(rnd() * cols.length) | 0]; g.beginPath(); g.roundRect(-7, -2.5, 14, 5, 2.5); g.fill();
+    g.restore();
+  }
   adTex.needsUpdate = true;
 }
-paintAd();
-document.fonts.ready.then(paintAd);
-// two shells: one with the goal mouths cut out (Classic, Spikes), one closed all round (Sinkhole)
+paintIcing();
+document.fonts.ready.then(paintIcing);
+// two shells: one with the goal mouths cut out (Classic), one closed all round (Sinkhole)
 const arenaShell = new THREE.Group(), arenaShellClosed = new THREE.Group();
 arenaShellClosed.visible = false;
 scene.add(arenaShell, arenaShellClosed);
 {
   const rampMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
-  const adMat = new THREE.MeshStandardMaterial({ map: adTex, emissive: 0xffffff, emissiveMap: adTex, emissiveIntensity: 0.6, roughness: 0.5 });
-  const stripeMat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+  const icingMat = new THREE.MeshStandardMaterial({ map: adTex, emissive: 0xffffff, emissiveMap: adTex, emissiveIntensity: 0.24, roughness: 0.32, envMap: envTex, envMapIntensity: 0.5 });
+  const ropeMat = new THREE.MeshStandardMaterial({ map: ropeTex, vertexColors: true, emissive: 0xffffff, emissiveMap: ropeTex, emissiveIntensity: 0.4, roughness: 0.28, envMap: envTex, envMapIntensity: 0.7 });
   const shellParts = (cut) => {
-    const ramps = new THREE.Mesh(sweep(rampProfile(false, 8), { color: rampColor, cut }), rampMat);
-    const ads = new THREE.Mesh(sweep(wallProfile(RAMP, AD_TOP), { uScale: 1 / 82, vScale: 1 / (AD_TOP - RAMP), v0: RAMP, color: (x, y, z, c) => c.setRGB(1, 1, 1), cut }), adMat);
-    const stripe = new THREE.Mesh(sweep(wallProfile(AD_TOP, STRIPE_TOP), { color: (x, y, z, c) => endTint(z, c.setRGB(1.7, 1.55, 1.6), 1).multiplyScalar(1.4), cut }), stripeMat);
-    for (const m of [ramps, ads]) { m.castShadow = true; m.receiveShadow = true; }
-    return [ramps, ads, stripe];
+    const ramps = new THREE.Mesh(sweep(rampProfile(false, 8), { color: cut ? rampColor : rampColorPink, cut }), rampMat);
+    const icing = new THREE.Mesh(sweep(wallProfile(RAMP, AD_TOP), { uScale: 1 / 82, vScale: 1 / (AD_TOP - RAMP), v0: RAMP, color: (x, y, z, c) => c.setRGB(1, 1, 1), cut }), icingMat);
+    const rope = new THREE.Mesh(sweep(wallProfile(AD_TOP, STRIPE_TOP), { uScale: 1 / 2.2, vScale: 1 / (STRIPE_TOP - AD_TOP), v0: AD_TOP, color: (x, y, z, c) => endTint(z, c.setRGB(1, 1, 1), 0.5), cut }), ropeMat);
+    for (const m of [ramps, icing]) { m.castShadow = true; m.receiveShadow = true; }
+    return [ramps, icing, rope];
   };
   const caps = new THREE.Mesh(mouthCaps(), rampMat);
   caps.castShadow = caps.receiveShadow = true;
-  const glassMat = new THREE.MeshStandardMaterial({
-    map: hexTex, vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    roughness: 0.08, metalness: 0, envMap: envTex, envMapIntensity: 0.9,
+  // the jelly dome: clear where you look straight through it, thicker and brighter toward its edges
+  const jellyMat = new THREE.MeshStandardNodeMaterial({
+    map: jellyTex, vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    roughness: 0.1, metalness: 0, envMap: envTex, envMapIntensity: 0.45,
   });
-  const glassTint = (x, y, z, c) => endTint(z, c.setRGB(0.92, 0.97, 1), 0.6);
-  const glass = new THREE.Mesh(sweep([...wallProfile(STRIPE_TOP, F.H - RAMP), ...rampProfile(true, 8).slice(1)], { uScale: 1 / 9, vScale: 1 / 5.2, color: glassTint }), glassMat);
-  // the flat ceiling, also glass
+  jellyMat.opacityNode = dot(normalView, positionViewDirection).abs().clamp(0, 1).oneMinus().pow(2.2).mul(2.2).add(1);
+  // it glows a little from inside, so the underside of the ceiling never goes dark
+  jellyMat.emissiveNode = vertexColor().mul(tslTexture(jellyTex).rgb).mul(0.4);
+  const jellyTint = (x, y, z, c) => endTint(z, c.setRGB(1, 0.8, 0.94), 0.4);
+  const domeProfile = [...wallProfile(STRIPE_TOP, F.H - RAMP), ...rampProfile(true, 8).slice(1)];
+  const dome = new THREE.Mesh(sweep(domeProfile, { uScale: 1 / JELLY_TILE, vScale: 1 / JELLY_TILE, color: jellyTint }), jellyMat);
+  // the flat ceiling, the same jelly
   const k = OC, pts = [[OA, -(k - OA)], [OA, k - OA], [k - OB, OB], [-(k - OB), OB], [-OA, k - OA], [-OA, -(k - OA)], [-(k - OB), -OB], [k - OB, -OB]];
-  const cp = [0, F.H, 0], cn = [0, -1, 0], cu = [0, 0], cc = [1, 1, 1], ci = [];
-  pts.forEach(([x, z], i) => { cp.push(x, F.H, z); cn.push(0, -1, 0); cu.push(x / 9, z / 5.2); glassTint(x, F.H, z, _tint); cc.push(_tint.r, _tint.g, _tint.b); ci.push(0, 1 + i, 1 + ((i + 1) % 8)); });
+  const cp = [0, F.H, 0], cn = [0, -1, 0], cu = [0, 0], cc = [], ci = [];
+  const ceilTint = (x, z) => endTint(z, _tint.setRGB(1, 0.8, 0.94), 0.15);
+  ceilTint(0, 0); cc.push(_tint.r, _tint.g, _tint.b);
+  pts.forEach(([x, z], i) => { cp.push(x, F.H, z); cn.push(0, -1, 0); cu.push(x / JELLY_TILE, z / JELLY_TILE); ceilTint(x, z); cc.push(_tint.r, _tint.g, _tint.b); ci.push(0, 1 + i, 1 + ((i + 1) % 8)); });
   const cgeo = new THREE.BufferGeometry();
   cgeo.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3));
   cgeo.setAttribute('normal', new THREE.Float32BufferAttribute(cn, 3));
   cgeo.setAttribute('uv', new THREE.Float32BufferAttribute(cu, 2));
   cgeo.setAttribute('color', new THREE.Float32BufferAttribute(cc, 3));
   cgeo.setIndex(ci);
-  const ceiling = new THREE.Mesh(cgeo, glassMat);
-  glass.renderOrder = ceiling.renderOrder = 2;
-  arenaShell.add(...shellParts(true), caps, glass, ceiling);
-  const glass2 = new THREE.Mesh(sweep([...wallProfile(STRIPE_TOP, F.H - RAMP), ...rampProfile(true, 8).slice(1)], { uScale: 1 / 9, vScale: 1 / 5.2, color: glassTint, cut: false }), glassMat);
-  const ceiling2 = new THREE.Mesh(cgeo, glassMat);
-  glass2.renderOrder = ceiling2.renderOrder = 2;
-  arenaShellClosed.add(...shellParts(false), glass2, ceiling2);
+  const ceiling = new THREE.Mesh(cgeo, jellyMat);
+  dome.renderOrder = ceiling.renderOrder = 2;
+  arenaShell.add(...shellParts(true), caps, dome, ceiling);
+  const dome2 = new THREE.Mesh(sweep(domeProfile, { uScale: 1 / JELLY_TILE, vScale: 1 / JELLY_TILE, color: jellyTint, cut: false }), jellyMat);
+  const ceiling2 = new THREE.Mesh(cgeo, jellyMat);
+  dome2.renderOrder = ceiling2.renderOrder = 2;
+  arenaShellClosed.add(...shellParts(false), dome2, ceiling2);
 }
 
-// ---------- goals: glowing frame, nets, a light inside ----------
+// ---------- goals: candy-cane frames, a gummy net, a light inside ----------
 const netTex = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 64;
   const g = c.getContext('2d');
-  g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.strokeRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(0, 0, 64, 64); // a thin jelly film between the strands
+  g.strokeStyle = '#ffffff'; g.lineWidth = 7;
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(64, 0); g.lineTo(64, 64); g.lineTo(0, 64); g.closePath(); g.stroke();
+  g.fillStyle = '#ffffff'; // gummy knots where the strands cross
+  for (const [x, y] of [[0, 0], [64, 0], [0, 64], [64, 64]]) { g.beginPath(); g.arc(x, y, 7, 0, TAU); g.fill(); }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 })();
+// candy-cane stripes: the colour map, and a glow map (team stripe glows in its colour, the cream one faintly)
+function caneTextures(css) {
+  const mk = (bg, fg) => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, 64, 64); g.fillStyle = fg;
+    for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(k * 64, 64); g.lineTo(k * 64 + 28, 64); g.lineTo(k * 64 + 92, 0); g.lineTo(k * 64 + 64, 0); g.closePath(); g.fill(); }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    return t;
+  };
+  const glow = new THREE.Color(css).multiplyScalar(0.55).getStyle();
+  return { map: mk('#fff4e6', css), mask: mk('#4a4440', glow) };
+}
+// a cylinder of length L and radius R with its UVs scaled so the stripes wind at 45 degrees
+function caneGeo(R, L, seg) {
+  const geo = new THREE.CylinderGeometry(R, R, L, seg), uv = geo.attributes.uv, n = R > 0.7 ? 2 : 1;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * n, (uv.getY(i) * L * n) / (TAU * R));
+  return geo;
+}
 function buildGoal(team) {
   const s = -TEAM[team].dir, z0 = s * HL, R = F.postR;
-  const col = new THREE.Color(TEAM[team].color);
-  const frameMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.4, roughness: 0.3 });
+  const col = new THREE.Color(TEAM[team].color), cane = caneTextures(TEAM[team].css);
+  const frameMat = new THREE.MeshPhysicalMaterial({
+    map: cane.map, emissive: 0xffffff, emissiveMap: cane.mask, emissiveIntensity: 1.4, roughness: 0.22,
+    clearcoat: 1, clearcoatRoughness: 0.08, envMap: envTex, envMapIntensity: 0.8,
+  });
   const grp = new THREE.Group();
-  const postGeo = new THREE.CylinderGeometry(R, R, F.goalH, 20);
+  const postGeo = caneGeo(R, F.goalH, 20);
   for (const x of [-GW, GW]) {
     const m = new THREE.Mesh(postGeo, frameMat); m.position.set(x, F.goalH / 2, z0); m.castShadow = true; grp.add(m);
     const j = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12), frameMat); j.position.set(x, F.goalH, z0); grp.add(j);
   }
-  const bar = new THREE.Mesh(new THREE.CylinderGeometry(R, R, F.goalW, 20), frameMat);
+  const bar = new THREE.Mesh(caneGeo(R, F.goalW, 20), frameMat);
   bar.rotation.z = Math.PI / 2; bar.position.set(0, F.goalH, z0); bar.castShadow = true; grp.add(bar);
-  const railGeo = new THREE.CylinderGeometry(0.45, 0.45, F.goalD, 10);
+  const railGeo = caneGeo(0.45, F.goalD, 10);
   for (const x of [-GW, GW]) {
     const r = new THREE.Mesh(railGeo, frameMat); r.rotation.x = Math.PI / 2; r.position.set(x, F.goalH, z0 + (s * F.goalD) / 2); grp.add(r);
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, F.goalH, 10), frameMat); p.position.set(x, F.goalH / 2, z0 + s * F.goalD); grp.add(p);
+    const p = new THREE.Mesh(caneGeo(0.45, F.goalH, 10), frameMat); p.position.set(x, F.goalH / 2, z0 + s * F.goalD); grp.add(p);
   }
-  const back = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, F.goalW, 10), frameMat);
+  const back = new THREE.Mesh(caneGeo(0.45, F.goalW, 10), frameMat);
   back.rotation.z = Math.PI / 2; back.position.set(0, F.goalH, z0 + s * F.goalD); grp.add(back);
   const netMat = new THREE.MeshBasicMaterial({ map: netTex, color: col.clone().lerp(new THREE.Color(0xffffff), 0.55), transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, alphaTest: 0.05 });
   const net = (w, h, place) => {
     const geo = new THREE.PlaneGeometry(w, h);
     const uv = geo.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / 2.4, (uv.getY(i) * h) / 2.4);
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / 3, (uv.getY(i) * h) / 3);
     const m = new THREE.Mesh(geo, netMat); place(m); grp.add(m);
   };
   net(F.goalW, F.goalH, (m) => m.position.set(0, F.goalH / 2, z0 + s * F.goalD));
@@ -1347,37 +1614,125 @@ function updateCrowd(t, dt) {
   crowd.instanceMatrix.needsUpdate = true;
 }
 
-// ---------- boost pads ----------
-const padMats = {
-  small: new THREE.MeshStandardMaterial({ color: 0xfff1b8, emissive: 0xffc94d, emissiveIntensity: 1.6, roughness: 0.4 }),
-  big: new THREE.MeshStandardMaterial({ color: 0xffd08a, emissive: 0xff9a2e, emissiveIntensity: 2.2, roughness: 0.3 }),
-  off: new THREE.MeshStandardMaterial({ color: 0x7a5d92, roughness: 0.7 }),
-};
+// ---------- gumdrops and goo drops (they refill your goo) ----------
+// Goo drops (small) top your goo up; gumdrops (big) fill it. One you eat melts into a puddle, swells back up
+// while it reloads, then pops out again. Our own layout, mirrored in x and z so neither team is favoured: a
+// gumdrop halfway along each side wall and one toward each corner; goo drops in a ring round the kickoff
+// circle, a crescent in front of each hole, a pair along each wall and one either side of each end.
+// Interface used by physics, bots and netcode: x, z, big, cd, off, setActive(on).
+const GOO_DROP = new THREE.Color(0xffcf3a), GUMDROP = new THREE.Color(0xff5fa2);
 const pads = [];
+let dropMesh, gumMesh, puddleMesh, haloMesh;
 {
-  // Rocket League's 6 big and 28 small pads (uu coordinates; RL's y axis is our z)
   const spots = [];
-  for (const [x, z] of [[-3584, 0], [3584, 0], [-3072, -4096], [3072, -4096], [-3072, 4096], [3072, 4096]]) spots.push({ x: x * UU, z: z * UU, big: true });
-  for (const [x, z] of [[0, -4240], [-1792, -4184], [1792, -4184], [-940, -3308], [940, -3308], [0, -2816], [-3584, -2484], [3584, -2484],
-    [-1788, -2300], [1788, -2300], [-2048, -1036], [2048, -1036], [0, -1024], [-1024, 0], [1024, 0], [-2048, 1036], [2048, 1036], [0, 1024],
-    [-1788, 2300], [1788, 2300], [-3584, 2484], [3584, 2484], [0, 2816], [-940, 3308], [940, 3308], [-1792, 4184], [1792, 4184], [0, 4240]]) spots.push({ x: x * UU, z: z * UU, big: false });
-  const smallGeo = new THREE.CylinderGeometry(1.5, 1.8, 0.2, 24);
-  const baseGeo = new THREE.CylinderGeometry(3.0, 3.4, 0.26, 32);
-  const orbGeo = new THREE.SphereGeometry(1.5, 24, 16);
-  for (const s of spots) {
-    const base = new THREE.Mesh(s.big ? baseGeo : smallGeo, s.big ? padMats.off : padMats.small);
-    base.position.set(s.x, s.big ? 0.13 : 0.1, s.z);
-    base.receiveShadow = true;
-    scene.add(base);
-    let orb = null;
-    if (s.big) { orb = new THREE.Mesh(orbGeo, padMats.big); orb.position.set(s.x, 3, s.z); scene.add(orb); }
-    const pad = { ...s, cd: 0, base, orb, phase: rand(0, TAU) };
-    pad.setActive = (on) => {
-      if (pad.big) pad.orb.visible = on && !pad.off;
-      else pad.base.material = on ? padMats.small : padMats.off;
-    };
+  // (x, z) and its mirror images; a zero coordinate is not doubled
+  const mirror = (x, z, big) => { for (const sx of x ? [1, -1] : [1]) for (const sz of z ? [1, -1] : [1]) spots.push({ x: sx * x, z: sz * z, big }); };
+  mirror(94, 0, true); mirror(86, 88, true);                                     // 6 gumdrops
+  for (const a of [Math.PI / 8, (3 * Math.PI) / 8]) mirror(30 * Math.cos(a), 30 * Math.sin(a), false); // ring of 8
+  mirror(46, 56, false); mirror(96, 46, false);                                 // midfield, along the walls
+  mirror(19.5, 72, false); mirror(33, 91, false);                               // crescent in front of each hole
+  mirror(42, 122, false);                                                       // either side of each end
+  // goo drop: a squat drop with a curled tip, like a piped meringue kiss
+  const kiss = [new THREE.Vector2(0, 0)], KR = 1.45, KH = 2.0;
+  for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + (i / 5) * (Math.PI / 2); kiss.push(new THREE.Vector2(KR - 0.4 + Math.cos(a) * 0.4, 0.4 + Math.sin(a) * 0.4)); }
+  for (let i = 1; i <= 14; i++) { const s = i / 14; kiss.push(new THREE.Vector2(Math.max(0.002, KR * Math.pow(1 - s, 1.35) * (1 + 0.35 * Math.sin(s * Math.PI))), 0.4 + s * (KH - 0.4))); }
+  const dropGeo = new THREE.LatheGeometry(kiss, 28);
+  { const p = dropGeo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y > 1.2) p.setX(i, p.getX(i) + 0.32 * ((y - 1.2) / 0.8) ** 2); } dropGeo.computeVertexNormals(); }
+  // gumdrop: a rounded dome, coated in sugar
+  const gum = [new THREE.Vector2(0, 0)];
+  for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + (i / 5) * (Math.PI / 2); gum.push(new THREE.Vector2(2.35 + Math.cos(a) * 0.45, 0.45 + Math.sin(a) * 0.45)); }
+  for (let i = 1; i <= 6; i++) { const s = i / 6; gum.push(new THREE.Vector2(2.8 - 0.62 * s + 0.1 * Math.sin(s * Math.PI), 0.45 + 1.55 * s)); }
+  for (let i = 1; i <= 10; i++) { const a = (i / 10) * (Math.PI / 2); gum.push(new THREE.Vector2(Math.max(0.002, 2.18 * Math.cos(a)), 2.0 + 1.05 * Math.sin(a))); }
+  const gumGeo = new THREE.LatheGeometry(gum, 40);
+  // the sugar tiles 5 x 2 round each gumdrop. Scale the UVs, not sugar.repeat: under WebGPU an emissiveMap's
+  // repeat leaks into every other material's maps (it put a shrunken copy of the icing over the walls)
+  { const uv = gumGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 5, uv.getY(i) * 2); }
+  // sugar: a faint pink glow with bright crystals that sparkle under the bloom
+  const sugar = canvasTexture(256, (g, s) => {
+    g.fillStyle = '#4a1230'; g.fillRect(0, 0, s, s);
+    let seed = 3;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 260; i++) {
+      const k = rnd();
+      g.fillStyle = k < 0.12 ? '#ffffff' : `rgba(255,${(200 + k * 55) | 0},${(225 + k * 30) | 0},${(0.25 + k * 0.5).toFixed(2)})`;
+      g.fillRect(rnd() * s, rnd() * s, 1.5 + rnd() * 2.5, 1.5 + rnd() * 2.5);
+    }
+  });
+  sugar.wrapS = sugar.wrapT = THREE.RepeatWrapping;
+  dropMesh = new THREE.InstancedMesh(dropGeo, new THREE.MeshPhysicalMaterial({
+    color: GOO_DROP, emissive: 0xffa21a, emissiveIntensity: 0.5, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05,
+    sheen: 0.5, sheenColor: 0xfff4c0, envMap: envTex, envMapIntensity: 1.2,
+  }), 64);
+  gumMesh = new THREE.InstancedMesh(gumGeo, new THREE.MeshPhysicalMaterial({
+    color: GUMDROP, emissive: 0xffffff, emissiveMap: sugar, emissiveIntensity: 1.7, roughness: 0.55,
+    sheen: 1, sheenColor: 0xffe2f0, sheenRoughness: 0.35, envMap: envTex, envMapIntensity: 0.6,
+  }), 16);
+  // melted candy: a glossy puddle that swells back up while the pad reloads
+  const puddleGeo = new THREE.SphereGeometry(1, 24, 6, 0, TAU, 0, Math.PI / 2);
+  puddleMesh = new THREE.InstancedMesh(puddleGeo, new THREE.MeshPhysicalMaterial({
+    roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04, envMap: envTex, envMapIntensity: 1.1, transparent: true, opacity: 0.82,
+  }), 64);
+  // a soft glow on the floor, so pads read from across the arena
+  const haloGeo = new THREE.PlaneGeometry(1, 1); haloGeo.rotateX(-Math.PI / 2);
+  haloMesh = new THREE.InstancedMesh(haloGeo, new THREE.MeshBasicMaterial({
+    map: TEX.soft, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+  }), 64);
+  const zero = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color();
+  let nd = 0, ng = 0;
+  spots.forEach((s, i) => {
+    const pad = { ...s, cd: 0, orb: null, phase: rand(0, TAU), on: true, vi: s.big ? ng++ : nd++, viz: { on: true, k: 1, kv: 0, pk: 0 } };
+    pad.setActive = (on) => { pad.on = on; };
     pads.push(pad);
+    puddleMesh.setColorAt(i, c.copy(s.big ? GUMDROP : GOO_DROP).lerp(new THREE.Color(0x5d3f80), 0.35));
+    haloMesh.setColorAt(i, c.copy(s.big ? GUMDROP : GOO_DROP).multiplyScalar(s.big ? 0.8 : 0.65));
+  });
+  for (const [m, n] of [[dropMesh, nd], [gumMesh, ng], [puddleMesh, pads.length], [haloMesh, pads.length]]) {
+    m.count = n; m.frustumCulled = false;
+    for (let i = 0; i < n; i++) m.setMatrixAt(i, zero);
+    scene.add(m);
   }
+  dropMesh.castShadow = gumMesh.castShadow = true;
+  puddleMesh.receiveShadow = gumMesh.receiveShadow = dropMesh.receiveShadow = true;
+  haloMesh.renderOrder = 1;
+}
+// per frame: candy wobbles, squashes when a blob rolls over it, melts when eaten and pops back when ready
+const _padV = new V3(), _padQ = new THREE.Quaternion(), _padE = new THREE.Euler(), _padS = new V3(), _padM = new THREE.Matrix4(), _padZero = new THREE.Matrix4().makeScale(0, 0, 0);
+function updatePads(dt, t) {
+  if (updatePads.t === t) return; // the frame may call it more than once
+  updatePads.t = t;
+  dt = Math.min(dt, 0.05);
+  pads.forEach((p, i) => {
+    const v = p.viz, on = p.on && !p.off, big = p.big;
+    if (v.on && !on && !p.off && p.cd > 0) burst(_padV.set(p.x, big ? 2.2 : 1.1, p.z), (big ? GUMDROP : GOO_DROP).getHex(), big ? 12 : 6, big ? 9 : 6, big ? 0.3 : 0.22, 0.8);
+    if (!v.on && on) { v.k = Math.min(v.k, 0.3); v.kv = 12; }
+    v.on = on;
+    if (on) { v.kv += ((1 - v.k) * 170 - v.kv * 9) * dt; v.k += v.kv * dt; } else { v.k = Math.max(0, v.k - dt * 8); v.kv = 0; }
+    v.pk = on || p.off ? 0 : damp(v.pk, 1, 14, dt);
+    const mesh = big ? gumMesh : dropMesh;
+    if (p.off || v.k <= 0.001) mesh.setMatrixAt(p.vi, _padZero);
+    else {
+      // blobs rolling over it squash it (a blob with a full tank does not eat it)
+      let press = 0;
+      const reach = (big ? 2.6 : 1.4) + BLOB_R + 0.3;
+      for (const b of blobs) {
+        if (b.splatT > 0 || b.pos.y > BLOB_R + 3.2) continue;
+        const dx = b.pos.x - p.x, dz = b.pos.z - p.z, d2 = dx * dx + dz * dz;
+        if (d2 < reach * reach) press = Math.max(press, 1 - Math.sqrt(d2) / reach);
+      }
+      const wob = Math.sin(t * (big ? 2.2 : 3.1) + p.phase) * (big ? 0.045 : 0.06);
+      const sy = v.k * (1 + wob) * (1 - press * 0.6), sxz = v.k * (1 - wob * 0.5) * (1 + press * 0.3);
+      _padE.set(Math.sin(t * 1.7 + p.phase) * (big ? 0.03 : 0.09), p.phase, Math.cos(t * 1.3 + p.phase) * (big ? 0.02 : 0.06));
+      mesh.setMatrixAt(p.vi, _padM.compose(_padV.set(p.x, 0, p.z), _padQ.setFromEuler(_padE), _padS.set(sxz, sy, sxz)));
+    }
+    if (v.pk <= 0.001) puddleMesh.setMatrixAt(i, _padZero);
+    else {
+      const grow = clamp(1 - p.cd / (big ? 10 : 4), 0, 1), r = (big ? 3.0 : 1.6) * (0.72 + 0.28 * grow) * v.pk;
+      puddleMesh.setMatrixAt(i, _padM.compose(_padV.set(p.x, 0.02, p.z), _padQ.identity(), _padS.set(r, (big ? 0.35 : 0.22) + grow * (big ? 0.9 : 0.5), r)));
+    }
+    const hs = (big ? 10 : 5.6) * Math.max(0, v.k) * (1 + Math.sin(t * 2.4 + p.phase) * 0.05);
+    haloMesh.setMatrixAt(i, hs > 0.01 && !p.off ? _padM.compose(_padV.set(p.x, 0.05, p.z), _padQ.identity(), _padS.set(hs, 1, hs)) : _padZero);
+  });
+  for (const m of [dropMesh, gumMesh, puddleMesh, haloMesh]) m.instanceMatrix.needsUpdate = true;
 }
 
 // ---------- ball ----------
@@ -2193,7 +2548,7 @@ function shownMode() {
 }
 const modeLabel = () => (shownMode() === 'holes' ? 'SINKHOLE' : 'CLASSIC');
 
-// LED ribbons (podium front and the parapet above the top row): one tile scrolls round and round.
+// Painted candy ribbons (podium front and the parapet above the top row): one tile scrolls round and round.
 // Blender gives each ribbon a whole number of ~80-unit tiles, with UV u running 2 per tile.
 const fasciaCanvas = document.createElement('canvas');
 fasciaCanvas.width = 2048; fasciaCanvas.height = 108; // one tile, about 80 x 4.2 units
@@ -2201,27 +2556,43 @@ const fasciaTex = new THREE.CanvasTexture(fasciaCanvas);
 fasciaTex.colorSpace = THREE.SRGBColorSpace; fasciaTex.wrapS = THREE.RepeatWrapping; fasciaTex.flipY = false;
 fasciaTex.repeat.x = 0.5;
 fasciaTex.anisotropy = 8;
-function ledGrid(g, w, h, step) {
-  g.fillStyle = 'rgba(10,4,20,0.55)';
-  for (let x = 0; x < w; x += step) g.fillRect(x, 0, 1.5, h);
-  for (let y = 0; y < h; y += step) g.fillRect(0, y, w, 1.5);
+const SIGN_FONT = '"Bagel Fat One", "Arial Rounded MT Bold", sans-serif';
+const goalWord = () => (shownMode() === 'holes' ? 'SUNK!' : 'GOAL!');
+// faint diagonal candy stripes over a sign, and a glossy band across its top
+function candyFinish(g, w, h, stripe) {
+  g.save();
+  g.fillStyle = stripe;
+  for (let x = -h; x < w + h; x += h * 0.9) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + h * 0.4, h); g.lineTo(x + h * 0.85, 0); g.lineTo(x + h * 0.45, 0); g.closePath(); g.fill(); }
+  const gl = g.createLinearGradient(0, 0, 0, h);
+  gl.addColorStop(0, 'rgba(255,255,255,0.22)'); gl.addColorStop(0.3, 'rgba(255,255,255,0.06)'); gl.addColorStop(0.31, 'rgba(255,255,255,0)'); gl.addColorStop(1, 'rgba(20,6,30,0.18)');
+  g.fillStyle = gl; g.fillRect(0, 0, w, h);
+  g.restore();
+}
+// a little wrapped sweet, drawn between the words
+function wrappedSweet(g, x, y, r, col) {
+  g.fillStyle = col;
+  for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(x + sx * r * 0.8, y); g.lineTo(x + sx * r * 1.9, y - r * 0.7); g.lineTo(x + sx * r * 1.9, y + r * 0.7); g.closePath(); g.fill(); }
+  g.beginPath(); g.ellipse(x, y, r * 1.05, r * 0.8, 0, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(x - r * 0.35, y - r * 0.3, r * 0.3, r * 0.16, -0.4, 0, TAU); g.fill();
 }
 function drawFascia(goalTeam = -1) {
   const g = fasciaCanvas.getContext('2d'), W = fasciaCanvas.width, H = fasciaCanvas.height;
   stadium.fasciaMode = shownMode();
-  g.fillStyle = goalTeam >= 0 ? TEAM[goalTeam].css : '#1b0f2c';
+  g.fillStyle = goalTeam >= 0 ? TEAM[goalTeam].css : '#2a1440';
   g.fillRect(0, 0, W, H);
+  candyFinish(g, W, H, goalTeam >= 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,95,162,0.12)');
   const items = goalTeam >= 0
-    ? [['GOAL!', '#fff4e6'], ['GOAL!', '#24123a'], ['GOAL!', '#fff4e6'], ['GOAL!', '#24123a']]
+    ? [[goalWord(), '#fff4e6'], [goalWord(), '#24123a'], [goalWord(), '#fff4e6'], [goalWord(), '#24123a']]
     : [['GLOOPBALL', '#ff6fb0'], [modeLabel(), '#fff4e6'], ['BLUEBERRY', TEAM[0].css], ['TANGERINE', TEAM[1].css]];
-  g.font = `${Math.round(H * 0.58)}px "Bagel Fat One", "Chakra Petch", sans-serif`;
+  g.font = `${Math.round(H * 0.58)}px ${SIGN_FONT}`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
+  const sweets = ['#ffe07a', '#7de3c3', '#ff5fa2', '#c48ad9'];
   items.forEach(([text, col], i) => {
     const x = ((i + 0.5) / items.length) * W;
+    g.fillStyle = 'rgba(20,6,30,0.35)'; g.fillText(text, x + 3, H * 0.54 + 4);
     g.fillStyle = col; g.fillText(text, x, H * 0.54);
-    g.fillStyle = '#ff5fa2'; g.beginPath(); g.arc(((i + 1) / items.length) * W, H / 2, H * 0.07, 0, TAU); g.fill();
+    wrappedSweet(g, ((i + 1) / items.length) * W, H / 2, H * 0.13, goalTeam >= 0 ? '#fff4e6' : sweets[i]);
   });
-  ledGrid(g, W, H, 4);
   fasciaTex.needsUpdate = true;
 }
 drawFascia();
@@ -2231,6 +2602,8 @@ const screenCanvas = document.createElement('canvas');
 screenCanvas.width = 1024; screenCanvas.height = 440;
 const screenTex = new THREE.CanvasTexture(screenCanvas);
 screenTex.colorSpace = THREE.SRGBColorSpace; screenTex.flipY = false; screenTex.anisotropy = 8;
+// a dark fill until the first update paints the scoreboard: WebGPU refuses to upload a canvas never drawn on
+{ const g = screenCanvas.getContext('2d'); g.fillStyle = '#170b26'; g.fillRect(0, 0, screenCanvas.width, screenCanvas.height); }
 function screenBlob(g, x, y, r, css, look) {
   const gr = g.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
   gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, css); gr.addColorStop(1, '#1b0f2c');
@@ -2243,13 +2616,13 @@ function screenBlob(g, x, y, r, css, look) {
 }
 function drawScreen() {
   const g = screenCanvas.getContext('2d'), W = screenCanvas.width, H = screenCanvas.height;
-  const disp = '"Bagel Fat One", "Chakra Petch", sans-serif';
+  const disp = SIGN_FONT;
   g.textAlign = 'center'; g.textBaseline = 'middle';
   if (stadium.flash > 0) {
     const css = TEAM[stadium.flashTeam].css, gr = g.createLinearGradient(0, 0, 0, H);
     gr.addColorStop(0, css); gr.addColorStop(1, '#24123a');
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    g.font = `190px ${disp}`; g.fillStyle = '#fff4e6'; g.fillText('GOAL!', W / 2, H * 0.44);
+    g.font = `190px ${disp}`; g.fillStyle = '#fff4e6'; g.fillText(goalWord(), W / 2, H * 0.44);
     g.font = `56px ${disp}`; g.fillText(TEAM[stadium.flashTeam].name.toUpperCase(), W / 2, H * 0.8);
   } else {
     const gr = g.createLinearGradient(0, 0, 0, H);
@@ -2258,15 +2631,15 @@ function drawScreen() {
     g.font = `48px ${disp}`; g.fillStyle = '#ff6fb0'; g.fillText('GLOOPBALL', W / 2, 52);
     screenBlob(g, W * 0.14, H * 0.56, 86, TEAM[0].css, 1);
     screenBlob(g, W * 0.86, H * 0.56, 86, TEAM[1].css, -1);
-    g.font = `700 230px "Chakra Petch", ${disp}`; g.lineWidth = 14; g.strokeStyle = '#120a1e';
+    g.font = `210px ${disp}`; g.lineWidth = 14; g.strokeStyle = '#120a1e'; g.lineJoin = 'round';
     for (const [k, x] of [[0, 0.36], [1, 0.64]]) {
       g.fillStyle = TEAM[k].css; g.strokeText(String(game.score[k]), W * x, H * 0.56); g.fillText(String(game.score[k]), W * x, H * 0.56);
     }
-    g.fillStyle = '#fff4e6'; g.fillRect(W / 2 - 14, H * 0.5, 28, 14);
-    g.font = `700 64px "Chakra Petch", ${disp}`; g.fillStyle = 'rgba(255,244,230,0.85)';
+    g.fillStyle = '#fff4e6'; g.beginPath(); g.roundRect(W / 2 - 16, H * 0.5, 32, 16, 8); g.fill();
+    g.font = `60px ${disp}`; g.fillStyle = 'rgba(255,244,230,0.85)';
     g.fillText(game.mode === 'match' ? fmtTime(game.time) : modeLabel(), W / 2, H * 0.89);
   }
-  ledGrid(g, W, H, 5);
+  candyFinish(g, W, H, 'rgba(255,255,255,0.03)');
   screenTex.needsUpdate = true;
 }
 
@@ -2383,6 +2756,7 @@ async function loadStadium() {
 
 // per frame: jelly desserts wobble (hard after goals), the ribbon scrolls, the screens follow the match
 function updateStadium(dt, t) {
+  updatePads(dt, t);
   const goals = game.score[0] + game.score[1];
   if (goals !== stadium.lastGoals) {
     if (goals > stadium.lastGoals) {
@@ -2479,18 +2853,17 @@ function drawHolesFloor(withText) {
   const base = g.createLinearGradient(0, Z(-HL), 0, Z(HL));
   base.addColorStop(0, '#aebfff'); base.addColorStop(0.4, '#ecd3f6'); base.addColorStop(0.6, '#f8d6ea'); base.addColorStop(1, '#ffcaa6');
   g.fillStyle = base; g.fillRect(0, 0, W, H);
-  // jelly cells: big soft hexagons, each a little lighter or darker than the next
+  // candy buttons: staggered rows of round sugar dots in four flavours, faint enough to keep the lines readable
   let seed = 11;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const r = 7.5, w = Math.sqrt(3) * r;
-  for (let row = -14; row <= 14; row++) for (let col = -9; col <= 9; col++) {
-    const cx = col * w + (row & 1 ? w / 2 : 0), cz = row * r * 1.5;
-    g.beginPath();
-    for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + (i / 6) * TAU; g[i ? 'lineTo' : 'moveTo'](X(cx + Math.cos(a) * (r - 0.4)), Z(cz + Math.sin(a) * (r - 0.4))); }
-    g.closePath();
-    const k = rnd();
-    g.fillStyle = k < 0.55 ? `rgba(255,255,255,${(0.06 + k * 0.2).toFixed(3)})` : `rgba(110,50,150,${((k - 0.55) * 0.16).toFixed(3)})`;
-    g.fill();
+  const flav = ['255,95,162', '255,207,58', '196,138,217', '255,255,255'];
+  const sp = 9, dr = 2.2;
+  for (let row = -18; row <= 18; row++) for (let col = -13; col <= 13; col++) {
+    const cx = col * sp + (row & 1 ? sp / 2 : 0), cz = row * sp * 0.866;
+    const f = flav[(rnd() * 4) | 0], a = 0.15 + rnd() * 0.09;
+    g.fillStyle = `rgba(${f},${a.toFixed(2)})`; g.beginPath(); g.arc(X(cx), Z(cz), dr * S, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.32)'; g.lineWidth = 0.35 * S; g.lineCap = 'round';
+    g.beginPath(); g.arc(X(cx), Z(cz), dr * 0.62 * S, 3.6, 4.6); g.stroke();
   }
   // around each hole: a team-coloured swirl, like water spiralling down a drain
   for (const t of [0, 1]) {
@@ -2639,13 +3012,13 @@ function updateHoles(dt, t) {
 // show the Sinkhole arena (closed walls, holes) or the classic one (goals in the end walls)
 function setArenaMode(holes) {
   arenaMode.holes = holes;
+  if (icingMode !== holes) paintIcing();
   arenaShell.visible = !holes; arenaShellClosed.visible = holes;
   floorMesh.visible = !holes; holesFloor.visible = holes;
   for (const g of goals) g.grp.visible = !holes;
   for (const h of holeViz) { h.grp.visible = holes; h.ripples.length = 0; h.calm = false; }
   for (const p of pads) {
     p.off = holes && holeR(p.x, p.z) < HOLE.r + 6;
-    p.base.visible = !p.off;
     p.setActive(p.cd <= 0);
   }
 }
@@ -4207,7 +4580,7 @@ function aiPlay(b, d, dt, T) {
 // goals, and the other game follows it and hides the corrections. The host runs the clock, the kickoffs,
 // overtime and the end of the match.
 const NET = {
-  version: 2, prefix: 'gloopball-r1-',
+  version: 3, prefix: 'gloopball-r1-',
   lib: 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
   sri: 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR',
   home: 'https://eliotdupouy.github.io/gloopball/',
@@ -4865,8 +5238,8 @@ function updatePhase(dt) {
       if (game.spike) ball.vel.set(rand(-1, 1), -1, rand(-1, 1)); // Spike Drop: the ball falls from the sky
       if (game.mode === 'match') {
         if (game.spike) showBanner('Drop!', 'go', (isTouch ? 'Tap Spikes' : 'F pops your spikes') + (game.holes ? ': grab it, then dunk it in their hole' : ' for 5 s'));
-        else if (game.holes && game.score[0] + game.score[1] === 0) showBanner('Go!', 'go', 'Sink the ball in their hole');
-        else showBanner('Go!', 'go');
+        else if (game.holes && game.score[0] + game.score[1] === 0) showBanner('Gloop!', 'go', 'Sink the ball in their hole');
+        else showBanner('Gloop!', 'go');
         sfx.beep(true);
       }
     }
@@ -4918,7 +5291,7 @@ function onGoal(team) {
   if (game.mode === 'match') {
     const own = !scorer && ball.lastTouch; // nobody touched it: just a goal
     const sub = scorer ? (scorer.isPlayer ? 'You scored' : `${scorer.name} scored`) : own ? 'Own goal' : '';
-    showBanner('Goal!', 't' + team, sub, 2600);
+    showBanner(game.holes ? 'Sunk!' : 'Goal!', 't' + team, sub, 2600);
     sfx.goal();
     game.shake = 0.7;
     addFeed(scorer ? `<b class="t${team}">${scorer.name}</b> scored for ${TEAM[team].name}`
@@ -4968,9 +5341,8 @@ function endMatch() {
 let bannerTimer = 0;
 function showBanner(text, kind, sub, ms = 900) {
   const el = $('banner');
-  el.className = 'banner';
-  el.innerHTML = text + (sub ? `<small>${sub}</small>` : '');
-  if (kind === 't0' || kind === 't1') el.classList.add(kind);
+  el.className = 'banner' + (kind ? ' ' + kind : '');
+  el.innerHTML = `<span class="bt">${text}</span>` + (sub ? `<small>${sub}</small>` : '');
   el.hidden = false;
   void el.offsetWidth;
   el.classList.add('pop');
@@ -4984,7 +5356,18 @@ function addFeed(html) {
   while (f.children.length > 4) f.lastChild.remove();
   setTimeout(() => { d.classList.add('fade'); setTimeout(() => d.remove(), 600); }, 4200);
 }
-function updateScoreboard() { $('scoreA').textContent = game.score[0]; $('scoreB').textContent = game.score[1]; }
+// a team's blob bounces when its score goes up
+function updateScoreboard() {
+  for (const [t, id] of [[0, 'scoreA'], [1, 'scoreB']]) {
+    const el = $(id), v = String(game.score[t]);
+    if (el.textContent === v) continue;
+    const up = +v > +el.textContent;
+    el.textContent = v;
+    if (up) { const blob = el.parentElement; blob.classList.remove('boing'); void blob.offsetWidth; blob.classList.add('boing'); }
+  }
+}
+// the clock as one box per character (see .sb-clock b)
+const clockHTML = (s) => [...s].map((ch) => (/\d/.test(ch) ? `<b>${ch}</b>` : `<b class="sep">${ch}</b>`)).join('');
 const fmtTime = (s) => { s = Math.max(0, s); return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; };
 const hudCache = {};
 const _proj = new V3();
@@ -4996,7 +5379,7 @@ function updateSpikesMeter(p) {
   const st = p.spikeT > 0 ? 'active' : p.spikeReload > 0 ? 'reload' : game.spikesOn && p.splatT <= 0 ? 'ready' : 'wait';
   const fill = st === 'active' ? p.spikeT / SPIKE_TIME : st === 'reload' ? 1 - p.spikeReload / SPIKE_RELOAD : st === 'ready' ? 1 : 0;
   const label = st === 'active' ? `Spikes out · ${p.spikeT.toFixed(1)} s`
-    : st === 'reload' ? `Reloading · ${Math.ceil(p.spikeReload)} s`
+    : st === 'reload' ? `Reload · ${Math.ceil(p.spikeReload)} s`
       : st === 'ready' ? (isTouch ? 'Spikes ready' : 'Spikes ready · F') : 'Spikes';
   if (hudCache.spState !== st) {
     $('spikes').className = 'spikes ' + st;
@@ -5007,7 +5390,7 @@ function updateSpikesMeter(p) {
   if (hudCache.spLabel !== label) { $('spikesLabel').textContent = label; hudCache.spLabel = label; }
   const w = (fill * 100).toFixed(1);
   if (hudCache.spW !== w) {
-    $('spikesFill').style.width = w + '%';
+    $('spikes').style.setProperty('--fill', w + '%');
     $('tSpike').style.setProperty('--fill', w + '%');
     hudCache.spW = w;
   }
@@ -5018,16 +5401,23 @@ function updateSpikesMeter(p) {
 function updateHUD() {
   if (game.mode !== 'match') return;
   const clock = game.overtime ? '+' + fmtTime(game.time) : fmtTime(Math.ceil(game.time));
-  if (clock !== hudCache.clock) { $('clock').textContent = clock; $('clock').classList.toggle('ot', game.overtime); hudCache.clock = clock; }
+  if (clock !== hudCache.clock) {
+    const el = $('clock');
+    el.innerHTML = clockHTML(clock); el.setAttribute('aria-label', clock); el.classList.toggle('ot', game.overtime);
+    hudCache.clock = clock;
+  }
   const p = game.player;
   if (!p) return;
   const bv = Math.floor(p.boost);
   if (bv !== hudCache.boost) {
     $('boostNum').textContent = bv;
-    $('boostFill').style.strokeDashoffset = (314.16 * (1 - p.boost / 100)).toFixed(1);
+    $('boostFill').style.height = clamp(p.boost, 0, 100).toFixed(1) + '%';
     $('boost').classList.toggle('full', bv >= 100);
+    $('boost').classList.toggle('empty', bv <= 0);
     hudCache.boost = bv;
   }
+  const burn = !!p.boosting;
+  if (hudCache.burn !== burn) { $('boost').classList.toggle('burn', burn); hudCache.burn = burn; }
   const carrying = ball.carrier === p;
   if (hudCache.carry !== carrying) { $('carryChip').hidden = !carrying; hudCache.carry = carrying; }
   const charging = carrying && p.charging;
@@ -5208,7 +5598,6 @@ function updateVisuals(dt) {
       spawnParticle(ball.pos.x, ball.pos.y, ball.pos.z, rand(-1, 1), rand(-1, 1), rand(-1, 1), 0xff5fa2, rand(0.15, 0.3), 0.4, 0.2, false);
     }
   } else ballRing.visible = false;
-  for (const p of pads) if (p.orb && p.orb.visible) { p.orb.position.y = 3 + Math.sin(t * 2 + p.phase) * 0.4; p.orb.rotation.y += dt; }
   for (const g of goals) {
     g.flash = Math.max(0, (g.flash || 0) - dt * 0.6);
     g.light.intensity = g.baseIntensity * (1 + g.flash * 4);
@@ -5479,7 +5868,7 @@ async function boot(data) {
       }
     },
     startMatch, kickoff, updateCamera, updateVisuals, settings, physicsStep, thinkBot, updatePhase, STEP,
-    net, netNow, netOwnsBall, tick, pads,
+    net, netNow, netOwnsBall, tick, pads, showBanner, addFeed, updateScoreboard,
   };
 }
 try { window.claude?.hot?.snapshot?.(() => ({ settings: { ...settings } })); } catch (e) { /* not in a viewer */ }
