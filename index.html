@@ -591,6 +591,7 @@ const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const damp = (a, b, k, dt) => lerp(a, b, 1 - Math.exp(-k * dt));
+const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
 function angleDiff(a, b) {
@@ -810,7 +811,11 @@ const sfx = (() => {
     hit: (v) => { tone({ type: 'triangle', f0: 230, f1: 75, dur: 0.15, vol: clamp(v, 0.05, 0.42) }); noise({ dur: 0.1, vol: clamp(v * 0.8, 0.04, 0.3), f0: 2600, f1: 380 }); },
     flip: (v = 1) => noise({ dur: 0.24, vol: 0.13 * v, f0: 2800, f1: 500, type: 'bandpass' }),
     reset: () => { tone({ f0: 880, f1: 1760, dur: 0.12, vol: 0.12 }); tone({ f0: 1320, f1: 2200, dur: 0.1, vol: 0.08, delay: 0.07 }); },
-    setBoost(on) { if (boostGain && ctx) boostGain.gain.setTargetAtTime(on && !muted ? 0.14 : 0, ctx.currentTime, 0.05); },
+    // a soft wet pat as a bounding blob lands, and the squish of a boost squirt
+    step: (v) => { tone({ f0: 230, f1: 95, dur: 0.07, vol: 0.06 * v }); noise({ dur: 0.05, vol: 0.035 * v, f0: 1100, f1: 260 }); },
+    squirt: (v) => { noise({ dur: 0.09, vol: 0.11 * v, f0: 1700, f1: 380, type: 'bandpass', q: 1.4 }); tone({ f0: 320, f1: 150, dur: 0.06, vol: 0.035 * v }); },
+    // under the squirts, a quiet hiss of goo while boost is held
+    setBoost(on) { if (boostGain && ctx) boostGain.gain.setTargetAtTime(on && !muted ? 0.05 : 0, ctx.currentTime, 0.05); },
   };
 })();
 
@@ -1847,8 +1852,9 @@ async function setupBloom() {
 
 // ---------- soft-body jelly blobs ----------
 // Each blob is an icosphere reshaped on the CPU every frame: a volume-preserving strain spring (squash
-// and stretch along any axis), an inertial lean spring, travelling surface ripples, slow organic churn,
-// and smooth flattening against the floor, walls, neighbours and the ball.
+// and stretch along any axis), a lean spring, travelling surface ripples, slow organic churn, smooth
+// flattening against the floor, walls, neighbours and the ball, and the gait that carries it along: a
+// planted base, a bend into turns and a hop off the ground (see updateJelly).
 const JR = BLOB_R * 1.04;              // drawn radius, a touch larger than the collider so contacts squish
 const JSAG = BLOB_R * 0.1;             // a resting blob sinks into its own contact patch
 const J_DETAIL = matchMedia('(pointer: coarse)').matches ? 3 : 4;
@@ -1938,7 +1944,8 @@ function jellyPoint(j, px, py, pz, rho = 1) {
   r *= JR * rho;
   // a resting blob settles under its own weight: wider at the base, a little lower
   const hs = 1 + j.g * 0.05 * (1 - py) * (1 - py), vs = 1 - j.g * 0.1;
-  const a = j.anc, lx = px * r * hs * EL_X, ly = py * r * vs * EL_Y + a, lz = pz * r * hs * EL_Z;
+  // turning, the body curves along its path: nose and tail both swing in toward the turn
+  const a = j.anc, lx = px * r * hs * EL_X + j.bend * (pz * pz - 0.33) * r, ly = py * r * vs * EL_Y + a, lz = pz * r * hs * EL_Z;
   // to world, relative to the anchor (the contact patch when grounded, the centre in the air), then strain about it
   const ox = j.lx * lx + j.ux * ly + j.fx * lz, oy = j.ly * lx + j.uy * ly + j.fy * lz, oz = j.lz * lx + j.uz * ly + j.fz * lz;
   const M = j.Mt;
@@ -1948,6 +1955,9 @@ function jellyPoint(j, px, py, pz, rho = 1) {
   // inertial lean: the top lags behind accelerations; the base stays put while grounded
   const w = py * 0.6 + (0.5 - py * 0.1) * j.g;
   X += j.Jx * w; Y += j.Jy * w; Z += j.Jz * w;
+  // the gait's planted base: the bottom holds where it touched down while the body moves on over it
+  const wb = (1 - py) * 0.5, wb2 = wb * wb;
+  X += j.sbx * wb2; Y += j.sby * wb2; Z += j.sbz * wb2;
   let wx = j.cx + X, wy = j.cy + Y, wz = j.cz + Z;
   // splat melt and respawn inflate, both about the ground point under the blob
   if (j.melt > 0 || j.inf !== 1) {
@@ -2026,29 +2036,8 @@ function jellyMeshUpdate(j) {
   j.body.position.set(cx, cy, cz);
 }
 
-// boost flame: glowing cones out of the blob's back (local -z), shown while boosting. The cone's uv.y runs
-// from 0 at the base to 1 at the tip, so a vertical gradient fades the flame out toward its tip.
-const jetGeo = new THREE.ConeGeometry(0.7, 3.2, 18, 1, true).rotateX(-Math.PI / 2).translate(0, 0, -1.6);
-const jetCoreGeo = new THREE.ConeGeometry(0.38, 1.9, 14, 1, true).rotateX(-Math.PI / 2).translate(0, 0, -0.95);
-const jetFade = (() => {
-  const c = document.createElement('canvas'); c.width = 4; c.height = 64;
-  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
-  gr.addColorStop(0, '#000'); gr.addColorStop(0.5, '#4a4a4a'); gr.addColorStop(1, '#fff'); // top row = tip
-  g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
-  return new THREE.CanvasTexture(c);
-})();
-const jetMat = (color, k, opacity) => new THREE.MeshBasicMaterial({
-  color: new THREE.Color(color).multiplyScalar(k), alphaMap: jetFade, transparent: true, opacity,
-  depthWrite: false, side: THREE.DoubleSide, fog: false, // normal blending keeps the team colour saturated on a bright floor
-});
-const jetMats = [0, 1].map((t) => jetMat(TEAM[t].color, 1.3, 0.7));
-const jetCoreMats = [0, 1].map((t) => jetMat(new THREE.Color(TEAM[t].color).lerp(new THREE.Color(1, 0.97, 0.9), 0.35), 1.9, 0.9));
 function makeBlobMesh(team) {
   const root = new THREE.Group();
-  const jet = new THREE.Group();
-  const jetOuter = new THREE.Mesh(jetGeo, jetMats[team]), jetInner = new THREE.Mesh(jetCoreGeo, jetCoreMats[team]);
-  jetOuter.renderOrder = jetInner.renderOrder = 3;
-  jet.add(jetOuter, jetInner); jet.visible = false; root.add(jet);
   const geo = new THREE.BufferGeometry();
   const posArr = Float32Array.from(JELLY_SPHERE.pos), norArr = Float32Array.from(JELLY_SPHERE.pos);
   geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3).setUsage(THREE.DynamicDrawUsage));
@@ -2070,7 +2059,7 @@ function makeBlobMesh(team) {
   root.add(body, core, spikes, decals.shadow, decals.caustic);
   scene.add(root);
   const j = {
-    team, root, body, geo, posArr, norArr, core, eyes, spikes, shadow: decals.shadow, caustic: decals.caustic, jet, jetK: 0,
+    team, root, body, geo, posArr, norArr, core, eyes, spikes, shadow: decals.shadow, caustic: decals.caustic,
     M: new Float64Array(6), Mv: new Float64Array(6), Mt: new Float64Array(6),
     Jx: 0, Jy: 0, Jz: 0, Jvx: 0, Jvy: 0, Jvz: 0, g: 1, amp: 0.012, ta: rand(0, 10), tb: rand(0, 10), tc: rand(0, 10),
     rips: [], rip: new Float64Array(RIP_MAX * 5), nr: 0, planes: new Float64Array(16), np: 0,
@@ -2079,6 +2068,8 @@ function makeBlobMesh(team) {
     melt: 0, inf: 1, infV: 0, lid: 1, splat: false, fresh: true, hadBall: false,
     pvx: 0, pvy: 0, pvz: 0, pGround: true, trailAcc: 0,
     coreX: 0, coreY: 0, coreZ: 0, coreVX: 0, coreVY: 0, coreVZ: 0,
+    // gait: stride phase and strength, base offset, bend, hop height; boost: squirt phase and strength
+    gph: 0, gk: 0, sbx: 0, sby: 0, sbz: 0, bend: 0, hopL: 0, bph: 0, sqz: 0,
     bubbles: Array.from({ length: BUBBLES_PER_BLOB }, () => newBubble({}, true)),
   };
   return j;
@@ -2095,6 +2086,7 @@ function jellyReset(b, full) {
   j.Jx = j.Jy = j.Jz = j.Jvx = j.Jvy = j.Jvz = 0;
   j.coreX = j.coreY = j.coreZ = j.coreVX = j.coreVY = j.coreVZ = 0;
   j.rips.length = 0; j.nr = 0; j.fresh = true; j.flipped = false;
+  j.gph = j.gk = j.sbx = j.sby = j.sbz = j.bend = j.hopL = j.sqz = 0;
   j.hadBall = ball.carrier === b; j.hug = 0;
   if (full) { j.melt = 0; j.inf = 1; j.infV = 0; j.splat = false; j.pop = false; }
   b.sq = b.sqv = 0;
@@ -2273,6 +2265,25 @@ function kickStrain(j, nx, ny, nz, s) {
   j.Mv[0] += s * (nx * nx - 1 / 3); j.Mv[1] += s * (ny * ny - 1 / 3); j.Mv[2] += s * (nz * nz - 1 / 3);
   j.Mv[3] += s * nx * ny; j.Mv[4] += s * nx * nz; j.Mv[5] += s * ny * nz;
 }
+// the same squash (s < 0) or stretch along unit vector (x, y, z), added straight onto a strain T
+function addStrain(T, x, y, z, s) {
+  T[0] += s * (x * x - 1 / 3); T[1] += s * (y * y - 1 / 3); T[2] += s * (z * z - 1 / 3);
+  T[3] += s * x * y; T[4] += s * x * z; T[5] += s * y * z;
+}
+// a boost squirt: the squeezed jelly spurts goo out of its back
+function squirt(b) {
+  const f = b.fwd, L = b.left, U = b.up, v = b.vel;
+  _jp.copy(b.pos).addScaledVector(f, -JR * EL_Z * 0.92);
+  for (let i = 0; i < 5; i++) {
+    const s = rand(13, 22), sx = rand(-2.2, 2.2), sy = rand(-2.2, 2.2);
+    spawnParticle(_jp.x + rand(-0.25, 0.25), _jp.y + rand(-0.25, 0.25), _jp.z + rand(-0.25, 0.25),
+      v.x * 0.4 - f.x * s + L.x * sx + U.x * sy, v.y * 0.4 - f.y * s + L.y * sx + U.y * sy, v.z * 0.4 - f.z * s + L.z * sx + U.z * sy,
+      TEAM[b.team].color, rand(0.14, 0.3), rand(0.3, 0.5), 0.6, Math.random() < 0.3);
+  }
+  addRipple(b.mesh, -f.x, -f.y, -f.z, 0.07);
+  const a = audible(b.pos);
+  if (a > 0) sfx.squirt(a);
+}
 // ripples travel over the jelly's own surface, so their directions are kept in the blob's frame
 function addRipple(j, dx, dy, dz, amp) {
   const x = dx * j.lx + dy * j.ly + dz * j.lz, y = dx * j.ux + dy * j.uy + dz * j.uz, z = dx * j.fx + dy * j.fy + dz * j.fz;
@@ -2359,6 +2370,19 @@ function updateJelly(b, dt) {
       addRipple(j, -dvx + U.x * 0.1 * dvh, -dvy + U.y * 0.1 * dvh, -dvz + U.z * 0.1 * dvh, Math.min(0.2, 0.03 + k * 0.05));
       b.jiggle = Math.max(b.jiggle, Math.min(1, k * 0.4));
     }
+    // jumping off a surface: the push leaves a splat behind and flicks goo off it
+    if (!b.grounded && j.pGround && b.jumped && b.sinceJump < 0.2) {
+      _jp.copy(b.pos).addScaledVector(b.normal, -BLOB_R);
+      onSurface(_jp, _jn);
+      spawnTrail(_jp, _jn, b.vel, rand(1, 1.2), rand(1.1, 1.4), TEAM[b.team].color, rand(3, 4));
+      _jq.crossVectors(Math.abs(_jn.y) < 0.9 ? _Y : _X, _jn).normalize();
+      for (let i = 0; i < 4; i++) {
+        _jq.applyAxisAngle(_jn, TAU / 4 + rand(-0.4, 0.4));
+        const out = rand(3, 6), up = rand(2, 5);
+        spawnParticle(_jp.x + _jn.x * 0.3, _jp.y + _jn.y * 0.3, _jp.z + _jn.z * 0.3, _jq.x * out + _jn.x * up + vx * 0.2,
+          _jq.y * out + _jn.y * up + vy * 0.2, _jq.z * out + _jn.z * up + vz * 0.2, TEAM[b.team].color, rand(0.12, 0.2), rand(0.4, 0.6), 1, Math.random() < 0.4);
+      }
+    }
     // landing on any surface
     if (b.grounded && !j.pGround && b.landV > 4) {
       const v = b.landV, n = b.landN;
@@ -2391,14 +2415,73 @@ function updateJelly(b, dt) {
     arenaPlane(j, b.pos);
   }
 
-  // springs: lean (the top lags accelerations across the body, leads a little at speed), strain, nucleus slosh
+  // The gait: on a surface a blob bounds along under its own power. Each stride its base plants and holds
+  // while the body vaults on over it, squashing under its weight; then it pushes off, stretches through a
+  // short hop with the base swinging forward, and lands a little ahead for the next stride. Faster means
+  // quicker, longer, flatter strides. Powersliding, it skids on its belly instead.
   j.g = damp(j.g, b.grounded ? 1 : 0, 14, dt);
   const an = ax * U.x + ay * U.y + az * U.z, vn = vx * U.x + vy * U.y + vz * U.z;
   const tax = ax - U.x * an, tay = ay - U.y * an, taz = az - U.z * an;
-  const tvx = vx - U.x * vn, tvy = vy - U.y * vn, tvz = vz - U.z * vn;
-  j.Jvx += (-120 * (j.Jx - tvx * 0.008) - 6.5 * j.Jvx - tax * 0.6) * dt;
-  j.Jvy += (-120 * (j.Jy - tvy * 0.008) - 6.5 * j.Jvy - tay * 0.6) * dt;
-  j.Jvz += (-120 * (j.Jz - tvz * 0.008) - 6.5 * j.Jvz - taz * 0.6) * dt;
+  const tvx = vx - U.x * vn, tvy = vy - U.y * vn, tvz = vz - U.z * vn, tsp = Math.hypot(tvx, tvy, tvz);
+  const skid = b.ctrl.handbrake && Math.abs(vx * b.left.x + vy * b.left.y + vz * b.left.z) > 5;
+  const walk = b.grounded && !j.splat && !skid ? smoothstep(1, 6, tsp) : 0;
+  j.gk = damp(j.gk, walk, walk > j.gk ? 7 : 12, dt);
+  if (b.grounded && !j.pGround) j.gph = 0; // every landing starts a stride on a planted base
+  const gs = Math.min(1, tsp / RL.maxSpeed), freq = 2 + 3 * Math.sqrt(gs), stance = lerp(0.4, 0.26, gs);
+  const ph0 = j.gph;
+  j.gph += freq * dt;
+  const footfall = j.gph >= 1, pushOff = ph0 < stance && j.gph >= stance;
+  j.gph %= 1;
+  const gk = j.gk, ph = j.gph;
+  // which way it travels along the surface (the nose, standing still)
+  let dx = j.fx, dy = j.fy, dz = j.fz;
+  if (tsp > 0.5) { dx = tvx / tsp; dy = tvy / tsp; dz = tvz / tsp; }
+  const reach = Math.min(0.55, (tsp * stance) / freq / 2) * gk; // how far ahead the base lands (and ends behind)
+  let hop = 0, su = 0, sf = 0, base;
+  if (ph < stance) {
+    const u = ph / stance;
+    su = -0.3 * gk * Math.sin(Math.PI * u); // squashed under its weight
+    base = reach * (1 - 2 * u);             // planted: the body moves on over it
+  } else {
+    const u = (ph - stance) / (1 - stance), s = Math.sin(Math.PI * u);
+    hop = gk * (0.25 + 0.42 * smoothstep(2, 18, tsp) - 0.2 * smoothstep(30, 60, tsp)) * s * (carrying ? 0.4 : 1);
+    su = 0.45 * gk * s * (1 - u);           // stretched as it leaves the ground, round again to land
+    sf = 0.16 * gk * s;                     // reaching forward through the hop
+    base = -reach * Math.cos(Math.PI * u);  // the base swings forward for the next footfall
+  }
+  j.hopL = hop;
+  j.sbx = dx * base; j.sby = dy * base; j.sbz = dz * base;
+  // turning, the body curves along its path
+  const yr = b.grounded ? b.w.x * U.x + b.w.y * U.y + b.w.z * U.z : 0;
+  j.bend = damp(j.bend, clamp(yr * 0.12, -0.3, 0.3) * smoothstep(2, 10, tsp), 10, dt);
+  if (footfall && gk > 0.35 && !j.splat) {
+    // a wet print where the base lands, a ripple up the body and a soft pat
+    const nn = b.normal;
+    _jq.set(dx, dy, dz);
+    _jp.copy(b.pos).addScaledVector(nn, -BLOB_R).addScaledVector(_jq, reach);
+    spawnTrail(_jp, nn, _jq, rand(0.75, 0.95), rand(0.95, 1.15) + tsp * 0.008, TEAM[b.team].color, rand(2.6, 3.4));
+    addRipple(j, -U.x, -U.y, -U.z, 0.04 + 0.05 * gk);
+    const a = audible(b.pos);
+    if (a > 0) sfx.step(a * a * (0.5 + 0.5 * gs));
+  }
+  if (pushOff && gk > 0.5 && tsp > 9 && !j.splat) {
+    // the push-off flicks a little goo back off the ground
+    const nn = b.normal;
+    _jp.copy(b.pos).addScaledVector(nn, 0.25 - BLOB_R).addScaledVector(_jq.set(dx, dy, dz), -reach);
+    for (let i = 0; i < 2; i++) {
+      const bk = rand(2, 5), up = rand(3, 6);
+      spawnParticle(_jp.x, _jp.y, _jp.z, vx * 0.15 - dx * bk + nn.x * up + rand(-1, 1), vy * 0.15 - dy * bk + nn.y * up + rand(-1, 1),
+        vz * 0.15 - dz * bk + nn.z * up + rand(-1, 1), TEAM[b.team].color, rand(0.1, 0.17), rand(0.35, 0.55), 1, Math.random() < 0.3);
+    }
+  }
+
+  // springs. Lean: pushing itself along, a blob leans into its own pull like a runner (forward as it speeds
+  // up, back as it brakes, in toward a turn); in the air, skidding, or knocked, the top lags behind instead.
+  const am = Math.hypot(tax, tay, taz), own = am > 1e-6 ? Math.min(1, 130 / am) * gk : 0;
+  const ka = 0.4 * own - 0.6 * (1 - own);
+  j.Jvx += (-120 * (j.Jx - tvx * 0.008) - 6.5 * j.Jvx + tax * ka) * dt;
+  j.Jvy += (-120 * (j.Jy - tvy * 0.008) - 6.5 * j.Jvy + tay * ka) * dt;
+  j.Jvz += (-120 * (j.Jz - tvz * 0.008) - 6.5 * j.Jvz + taz * ka) * dt;
   j.Jx = clamp(j.Jx + j.Jvx * dt, -1.05, 1.05); j.Jy = clamp(j.Jy + j.Jvy * dt, -1.05, 1.05); j.Jz = clamp(j.Jz + j.Jvz * dt, -1.05, 1.05);
   const jn = j.Jx * U.x + j.Jy * U.y + j.Jz * U.z;
   j.Jx -= U.x * jn; j.Jy -= U.y * jn; j.Jz -= U.z * jn;
@@ -2410,17 +2493,21 @@ function updateJelly(b, dt) {
   for (let k = 0; k < 6; k++) Mt[k] = j.M[k];
   // stretch along the direction of travel, more in the air
   const st = clamp((sp - 15) / 110, 0, 0.22) * (b.grounded ? 0.5 : 1);
-  if (st > 0) {
-    const ux = vx / sp, uy = vy / sp, uz = vz / sp;
-    Mt[0] += st * (ux * ux - 1 / 3); Mt[1] += st * (uy * uy - 1 / 3); Mt[2] += st * (uz * uz - 1 / 3);
-    Mt[3] += st * ux * uy; Mt[4] += st * ux * uz; Mt[5] += st * uy * uz;
+  if (st > 0) addStrain(Mt, vx / sp, vy / sp, vz / sp, st);
+  // the stride's squash and stretch, and a slow breath while standing still
+  addStrain(Mt, U.x, U.y, U.z, su + (1 - gk) * j.g * 0.025 * Math.sin(t * 2.3 + b.seed));
+  if (sf) addStrain(Mt, dx, dy, dz, sf);
+  // boost: the jelly squeezes itself in pulses and squirts goo out of its back, like a squid
+  j.sqz = damp(j.sqz, b.boosting && !j.splat ? 1 : 0, b.boosting ? 16 : 8, dt);
+  if (j.sqz > 0.01) {
+    const q0 = j.bph;
+    j.bph += dt * (b.supersonic ? 8.5 : 7);
+    const q = j.bph % 1;
+    if (Math.floor(j.bph) !== Math.floor(q0) && b.boosting && !j.splat) squirt(b);
+    if (q < 0.4) addStrain(Mt, j.fx, j.fy, j.fz, 0.17 * j.sqz * Math.sin((Math.PI * q) / 0.4));
   }
   // winding up a spit: squash back along the nose
-  if (b.charge > 0) {
-    const f = b.fwd, c = -b.charge * 0.14;
-    Mt[0] += c * (f.x * f.x - 1 / 3); Mt[1] += c * (f.y * f.y - 1 / 3); Mt[2] += c * (f.z * f.z - 1 / 3);
-    Mt[3] += c * f.x * f.y; Mt[4] += c * f.x * f.z; Mt[5] += c * f.y * f.z;
-  }
+  if (b.charge > 0) addStrain(Mt, b.fwd.x, b.fwd.y, b.fwd.z, -b.charge * 0.14);
   j.coreVX += (-60 * j.coreX - 4.5 * j.coreVX - ax * 0.12) * dt;
   j.coreVY += (-60 * j.coreY - 4.5 * j.coreVY - ay * 0.12) * dt;
   j.coreVZ += (-60 * j.coreZ - 4.5 * j.coreVZ - az * 0.12) * dt;
@@ -2442,16 +2529,16 @@ function updateJelly(b, dt) {
   }
   j.nr = n;
 
-  // the drawn centre sits a little low on a surface, so the flattened base meets it
-  const lift = (BLOB_R + 0.06 - 0.9 * JRY) * j.g;
+  // the drawn centre sits a little low on a surface, so the flattened base meets it; a hop lifts it clear
+  const lift = (BLOB_R + 0.06 - 0.9 * JRY) * j.g - hop;
   j.cx = b.pos.x - U.x * lift; j.cy = b.pos.y - U.y * lift; j.cz = b.pos.z - U.z * lift;
   j.anc = JRY * j.g;
   jellyMeshUpdate(j);
   placeFeatures(b, j, dt, t);
   placeDecals(b, j);
 
-  // slime trail from the contact patch, on whatever surface it is driving on
-  if (b.grounded && !j.splat && sp > 2.5) {
+  // slime smeared from the contact patch while creeping or skidding (bounding leaves prints instead)
+  if (b.grounded && !j.splat && sp > 2.5 && gk < 0.5) {
     j.trailAcc += sp * dt;
     if (j.trailAcc > (b.boosting ? 1.6 : 2.2)) {
       j.trailAcc = 0;
@@ -2513,7 +2600,7 @@ function placeFeatures(b, j, dt, t) {
 }
 
 function placeDecals(b, j) {
-  const h = Math.max(0, b.pos.y - BLOB_R);
+  const h = Math.max(0, b.pos.y - BLOB_R) + j.hopL;
   const tt = b.pos.y / -SUN_DIR.y, sx = b.pos.x + SUN_DIR.x * tt, sz = b.pos.z + SUN_DIR.z * tt;
   // tinted shadow and caustic on the flat floor only (on ramps and walls the nucleus shadow does the job)
   const onFloor = arenaDist(lerp(b.pos.x, sx, 0.75), 0.5, lerp(b.pos.z, sz, 0.75)) > 0.49 && (b.grounded ? b.normal.y > 0.97 : true);
@@ -2521,11 +2608,12 @@ function placeDecals(b, j) {
   const sh = j.shadow, ca = j.caustic;
   sh.visible = ca.visible = fade > 0.02;
   if (!sh.visible) return;
-  const rot = Math.atan2(SUN_DIR.x, SUN_DIR.z), grow = 1 + h * 0.06;
+  // a hop off the floor shrinks and lightens the shadow under it
+  const rot = Math.atan2(SUN_DIR.x, SUN_DIR.z), grow = (1 + h * 0.06) * (1 - j.hopL * 0.22);
   sh.position.set(lerp(b.pos.x, sx, 0.65), 0.03, lerp(b.pos.z, sz, 0.65));
   sh.rotation.y = rot;
   sh.scale.set(JR * 1.15 * grow, 1, JR * 1.5 * grow);
-  sh.material.opacity = 0.3 * fade;
+  sh.material.opacity = 0.3 * fade * (1 - j.hopL * 0.4);
   // sunlight focused by the jelly lens; it flexes as the jelly wobbles
   const flex = 1 - j.Mt[1] * 1.6 + j.amp * 2;
   ca.position.set(lerp(b.pos.x, sx, 0.9), 0.035, lerp(b.pos.z, sz, 0.9));
@@ -5467,17 +5555,16 @@ function updateHUD() {
 }
 
 // ---------- camera ----------
-// Ball cam keeps the blob low in the frame with the ball ahead; car cam looks where the blob faces. While the
-// blob is on a wall the view rolls with that surface, so steering still reads left and right. The camera
-// never leaves the arena: when a wall or the floor is in the way it swings up over the blob instead of
-// closing in on it.
+// Ball cam keeps the blob low in the frame with the ball ahead; car cam looks where the blob faces. The
+// horizon always stays level, walls included. The camera never leaves the arena: when a wall or the floor
+// is in the way it swings up over the blob instead of closing in on it.
 const cam = {
   pos: new V3(0, 30, -150), look: new V3(), up: new V3(0, 1, 0), dir: new V3(0, 0, 1), pivot: new V3(),
   surf: new V3(0, 1, 0), ballCam: true, snap: true, orbit: 0, wasOut: true,
 };
 // clear: how far the camera stays off any surface; keep: the most the blob may sit off the view's centre (rad)
 const CAM = { dist: 9.6, height: 3.7, ahead: 11, lift: 1.2, clear: 1.4, keep: 0.45 };
-const _dp = new V3(), _dl = new V3(), _cd = new V3(), _cu = new V3(), _cn = new V3(), _ch = new V3(), _cf = new V3(), _CZ = new V3(0, 0, 1);
+const _dp = new V3(), _dl = new V3(), _cd = new V3(), _cn = new V3(), _ch = new V3(), _cf = new V3(), _CZ = new V3(0, 0, 1);
 const _qc = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 // push a point out of the walls until it is at least margin inside the arena
 function keepInArena(p, margin) {
@@ -5535,40 +5622,51 @@ function updateCamera(dt) {
     cam.pos.lerp(_dp, k(4)); cam.look.lerp(_dl, k(6));
   } else {
     const useBall = cam.ballCam && ball.carrier !== p && ball.visible;
-    // the camera's up: the surface under the blob while it drives on one, world up in the air. After leaving
-    // a surface the roll holds for a moment, so a hop or a bump doesn't swing the horizon back and forth.
+    // the surface under the blob; after leaving one it still counts for a moment, so a hop doesn't swing the view
     if (p.grounded) cam.surf.copy(p.normal);
     else if (p.airT > 0.3) cam.surf.copy(_Y);
-    _cu.copy(cam.surf);
-    const wall = clamp((0.85 - _cu.y) / 0.5, 0, 1); // 0 on the floor, 1 on a wall
+    const n = cam.surf;
+    _cn.set(n.x, 0, n.z);
+    const nh = _cn.length();
+    // 0 on the floor, 1 on a wall (the ceiling never holds a blob, so it counts as floor)
+    const wall = clamp((0.85 - n.y) / 0.5, 0, 1) * clamp((nh - 0.2) / 0.3, 0, 1);
+    if (nh > 1e-4) _cn.multiplyScalar(1 / nh); // level, out of the wall into the arena
     // aim at the ball, or along the blob's nose (held still mid-flip in car cam)
     if (useBall) _cd.subVectors(ball.pos, p.pos);
     else if (p.flipping && !p.grounded) _cd.copy(cam.dir);
     else _cd.copy(p.fwd);
     if (_cd.lengthSq() < 1e-6) _cd.copy(p.fwd);
     _cd.normalize();
-    // split the aim into a heading across the up axis and an elevation, then soften the elevation
-    const s = clamp(_cd.dot(_cu), -1, 1);
-    flatten(_ch, _cd, _cu);
-    if (_ch.lengthSq() < 0.01) flatten(_ch, cam.dir, _cu);
-    if (_ch.lengthSq() < 0.01) flatten(_ch, p.fwd, _cu);
-    if (_ch.lengthSq() < 0.01) flatten(_ch, Math.abs(_cu.y) < 0.9 ? _Y : _CZ, _cu);
+    // the horizon stays level: split the aim into a heading round world up and an elevation
+    let el = Math.asin(clamp(_cd.y, -1, 1));
+    flatten(_ch, _cd, _Y);
+    if (_ch.lengthSq() < 0.01) flatten(_ch, cam.dir, _Y);
+    if (_ch.lengthSq() < 0.01) _ch.copy(_CZ);
     _ch.normalize();
-    let el = Math.asin(s);
-    el = useBall ? clamp(el, -0.4, 1.0) * 0.72 : p.grounded ? 0 : clamp(el, -0.5, 0.5) * 0.6;
-    // On a wall the ball is nearly always out in the arena, straight "above" the blob: aiming at it would pin
-    // the camera flat against the wall. So ball cam mostly follows the blob's way along the wall, tilted up
-    // only as far as keeps the camera off the wall (the arrow points at the ball).
-    if (useBall && wall > 0) {
-      flatten(_cf, p.fwd, _cu);
-      if (_cf.lengthSq() > 0.01) turnToward(_ch, _cf.normalize(), wall * 0.85, _cu);
-      el = Math.min(el, lerp(0.72, 0.16, wall));
+    el = useBall ? clamp(el, -0.4, 1.0) * 0.72 : p.grounded ? clamp(el, -0.5, 0.6) : clamp(el, -0.5, 0.5) * 0.6;
+    // On a wall the camera stays out over the arena: it faces the wall while the blob climbs, looks along it
+    // as the blob drives across, and hangs above the blob looking out over the arena as it comes down. Ball
+    // cam does the same along the ball's way when the ball is close to the wall, else along the blob's.
+    if (wall > 0) {
+      _cf.copy(p.fwd);
+      if (useBall) {
+        flatten(_dp, _cd, n);
+        const a = clamp((_dp.length() - 0.5) / 0.4, 0, 1);
+        if (a > 0) _cf.lerp(_dp.normalize(), a).normalize();
+      }
+      const fu = clamp(_cf.y, -1, 1);
+      _cf.y = 0;
+      _cf.addScaledVector(_cn, -(0.55 + 1.5 * fu));
+      if (_cf.lengthSq() > 1e-4) {
+        turnToward(_ch, _cf.normalize(), wall, _Y);
+        el = lerp(el, clamp(Math.asin(fu) * 0.6, -0.85, 0.85), wall);
+      }
     }
-    _cd.copy(_ch).multiplyScalar(Math.cos(el)).addScaledVector(_cu, Math.sin(el));
-    if (cam.snap) { cam.dir.copy(_cd); cam.up.copy(_cu); cam.pivot.copy(p.pos); }
+    _cd.copy(_ch).multiplyScalar(Math.cos(el)).addScaledVector(_Y, Math.sin(el));
+    cam.up.copy(_Y);
+    if (cam.snap) { cam.dir.copy(_cd); cam.pivot.copy(p.pos); }
     else {
-      turnToward(cam.dir, _cd, k(useBall ? 8 : 6), cam.up);
-      turnToward(cam.up, _cu, k(5.5), cam.dir);
+      turnToward(cam.dir, _cd, k(useBall ? 8 : 6), _Y);
       // the pivot trails the blob slightly, so speed reads and landings don't jolt the view
       cam.pivot.lerp(p.pos, k(28));
     }
@@ -5585,6 +5683,14 @@ function updateCamera(dt) {
     _ch.subVectors(p.pos, _dp).normalize();
     const off = Math.acos(clamp(_cf.dot(_ch), -1, 1));
     if (off > CAM.keep) { turnToward(_cf, _ch, (off - CAM.keep) / off, cam.up); _dl.copy(_dp).addScaledVector(_cf, lookLen); }
+    // a level horizon can't look straight up or down
+    if (Math.abs(_cf.y) > 0.94) {
+      let hx = _cf.x, hz = _cf.z, hl = Math.hypot(hx, hz);
+      if (hl < 1e-3) { hx = cam.dir.x; hz = cam.dir.z; hl = Math.hypot(hx, hz) || 1; }
+      const q = Math.sqrt(1 - 0.94 * 0.94) / hl;
+      _cf.set(hx * q, Math.sign(_cf.y) * 0.94, hz * q);
+      _dl.copy(_dp).addScaledVector(_cf, lookLen);
+    }
     cam.pos.copy(_dp); cam.look.copy(_dl);
   }
   cam.snap = false;
@@ -5610,24 +5716,7 @@ function updateVisuals(dt) {
   const t = game.t;
   updateGoo(dt);
   for (const b of blobs) {
-    const j = b.mesh, on = b.boosting && b.splatT <= 0;
-    // boost: a glowing jet out of the blob's back and a spray of goo
-    j.jetK = damp(j.jetK, on ? 1 : 0, on ? 18 : 10, dt);
-    j.jet.visible = j.jetK > 0.02;
-    if (j.jet.visible) {
-      j.jet.position.copy(b.pos).addScaledVector(b.fwd, -JR * EL_Z * 0.8).addScaledVector(b.up, -0.1);
-      j.jet.quaternion.copy(b.q);
-      const w = j.jetK * (0.92 + Math.random() * 0.12);
-      j.jet.scale.set(w, w, j.jetK * (0.8 + Math.random() * 0.4) * (b.supersonic ? 1.4 : 1));
-    }
-    if (on && Math.random() < dt * 50) {
-      _vx.copy(b.pos).addScaledVector(b.fwd, -JR * EL_Z * 0.9);
-      const sp = rand(10, 18);
-      spawnParticle(_vx.x + rand(-0.3, 0.3), _vx.y + rand(-0.3, 0.3), _vx.z + rand(-0.3, 0.3),
-        b.vel.x * 0.55 - b.fwd.x * sp + rand(-1.5, 1.5), b.vel.y * 0.55 - b.fwd.y * sp + rand(-1.5, 1.5), b.vel.z * 0.55 - b.fwd.z * sp + rand(-1.5, 1.5),
-        TEAM[b.team].color, rand(0.12, 0.26), rand(0.3, 0.55), 0.5, Math.random() < 0.25);
-    }
-    // supersonic: thin streaks peel off the sides
+    // supersonic: thin streaks peel off the sides (boost squirts come from the jelly update)
     if (b.supersonic && b.splatT <= 0 && Math.random() < dt * 36) {
       _vx.copy(b.pos).addScaledVector(b.left, (Math.random() < 0.5 ? -1 : 1) * JR * 0.9).addScaledVector(b.fwd, -rand(0, 1));
       spawnParticle(_vx.x, _vx.y, _vx.z, b.vel.x * 0.75, b.vel.y * 0.75, b.vel.z * 0.75, 0xffffff, rand(0.06, 0.11), 0.3, 0, false);
