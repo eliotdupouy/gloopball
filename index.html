@@ -12,7 +12,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 6c15 0 27 12 27 27 0 14-11 25-27 25S5 47 5 33C5 18 17 6 32 6z' fill='%23ff8a2b'/%3E%3Cellipse cx='22' cy='19' rx='9' ry='5.5' fill='%23fff' opacity='.5'/%3E%3Ccircle cx='24' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='41' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='25.5' cy='35' r='3' fill='%2324123a'/%3E%3Ccircle cx='42.5' cy='35' r='3' fill='%2324123a'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 6c15 0 27 12 27 27 0 14-11 25-27 25S5 47 5 33C5 18 17 6 32 6z' fill='%2394dc2c'/%3E%3Cellipse cx='22' cy='19' rx='9' ry='5.5' fill='%23fff' opacity='.5'/%3E%3Ccircle cx='24' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='41' cy='34' r='6' fill='%23fff'/%3E%3Ccircle cx='25.5' cy='35' r='3' fill='%2324123a'/%3E%3Ccircle cx='42.5' cy='35' r='3' fill='%2324123a'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;600;700;800&display=swap">
@@ -24,8 +24,10 @@
   --plum-2: #3a2158;
   --cream: #fff4e6;
   --cream-dim: #d9c8d8;
-  --berry: #4a86ff;
-  --tang: #ff8a2b;
+  --grape: #8f5cff;      /* team 0 (TEAM in 10-core.js) */
+  --grape-hi: #ae8eff;   /* lighter, for text on the dark plum */
+  --lime: #94dc2c;       /* team 1 */
+  --goo: #ffa040;        /* boost goo, not a team colour */
   --jelly: #ff5fa2;
   --glass: rgba(36, 18, 58, 0.78);
   --glass-line: rgba(255, 244, 230, 0.16);
@@ -53,7 +55,7 @@ body {
 }
 .sb-team { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sb-blob {
-  --c: #6f9dff; --c2: #2f62e0;
+  --c: #ae8eff; --c2: #6a35e8;
   position: relative; width: 70px; height: 54px; margin-top: 12px; display: grid; place-items: center;
   border-radius: 52% 48% 46% 54% / 60% 56% 44% 40%;
   background:
@@ -62,7 +64,8 @@ body {
   box-shadow: 0 6px 12px rgba(20, 8, 40, 0.35), inset 0 -7px 10px rgba(20, 8, 40, 0.3), inset 0 3px 5px rgba(255, 255, 255, 0.3);
   transform-origin: 50% 100%;
 }
-.sb-team.b .sb-blob { --c: #ffa04f; --c2: #e0640c; border-radius: 48% 52% 54% 46% / 56% 60% 40% 44%; }
+.sb-team.b .sb-blob { --c: #c4f27a; --c2: #6aae12; border-radius: 48% 52% 54% 46% / 56% 60% 40% 44%; }
+.sb-team.b .sb-score { color: var(--plum); text-shadow: 0 2px 0 rgba(255, 255, 255, 0.35); } /* white would vanish on lime */
 .sb-eyes { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
 .sb-eyes i {
   position: relative; width: 17px; height: 17px; border-radius: 50%; background: #fff;
@@ -102,7 +105,7 @@ body {
   box-shadow: 0 4px 12px rgba(20, 8, 40, 0.3), inset 0 -3px 0 rgba(120, 70, 120, 0.16);
   transform-origin: 100% 50%; animation: feedIn 0.5s ease-out both;
 }
-.feed-item b.t0 { color: #2f62e0; } .feed-item b.t1 { color: #d0600c; }
+.feed-item b.t0 { color: #6a35e8; } .feed-item b.t1 { color: #4a8a08; }
 .feed-item.fade { opacity: 0; transform: scale(0.9); transition: opacity 0.5s, transform 0.5s; }
 @keyframes feedIn { 0% { transform: scale(0.3, 0.2); opacity: 0; } 45% { transform: scale(1.08, 0.92); opacity: 1; } 70% { transform: scale(0.97, 1.04); } 100% { transform: scale(1); } }
 
@@ -177,7 +180,7 @@ body {
   transform: translateX(-50%); width: 210px; height: 18px; border-radius: 99px; padding: 3px;
   background: rgba(36, 18, 58, 0.66); border: 2px solid rgba(255, 244, 230, 0.4);
 }
-.charge span { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--tang), var(--jelly)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35); }
+.charge span { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--goo), var(--jelly)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35); }
 .charge-label { position: absolute; left: 0; right: 0; top: -22px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; text-shadow: 0 1px 4px rgba(20, 8, 40, 0.8); }
 
 /* spikes: the urchin pops its spikes out when they are ready or in use, and pulls them in to reload */
@@ -231,8 +234,8 @@ body {
   filter: drop-shadow(0 6px 0 var(--plum)) drop-shadow(0 12px 20px rgba(20, 8, 40, 0.5));
   transform-origin: 50% 90%;
 }
-.banner.t0 .bt { background-image: linear-gradient(180deg, #eef3ff 10%, #9dbcff 50%, #4a86ff 100%); }
-.banner.t1 .bt { background-image: linear-gradient(180deg, #fff3e6 10%, #ffc48f 50%, #ff8a2b 100%); }
+.banner.t0 .bt { background-image: linear-gradient(180deg, #f3eeff 10%, #c6b0ff 50%, #8f5cff 100%); }
+.banner.t1 .bt { background-image: linear-gradient(180deg, #f8ffea 10%, #d2f590 50%, #94dc2c 100%); }
 .banner.splat .bt, .banner.ot .bt { background-image: linear-gradient(180deg, #fff 10%, #ffb3d4 50%, var(--jelly) 100%); }
 .banner small {
   display: block; font-family: var(--ui); font-weight: 800; font-size: clamp(14px, 2.4vw, 22px); letter-spacing: 0.12em;
@@ -280,7 +283,7 @@ body {
   margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(52px, 11vw, 76px);
   line-height: 0.9; letter-spacing: -0.01em; color: var(--cream); text-wrap: balance;
 }
-.brand h1 .g1 { color: var(--berry); } .brand h1 .g2 { color: var(--tang); }
+.brand h1 .g1 { color: var(--grape-hi); } .brand h1 .g2 { color: var(--lime); }
 .brand p { margin: 10px 0 0; color: var(--cream-dim); font-size: 15px; line-height: 1.45; max-width: 36ch; }
 .opt { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .opt legend { padding: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cream-dim); margin-bottom: 7px; }
@@ -338,7 +341,7 @@ details.more[open] summary { margin-bottom: 10px; }
 .result h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(40px, 9vw, 60px); line-height: 0.95; text-wrap: balance; }
 .final { font-family: var(--display); font-weight: 400; font-size: 52px; line-height: 1; display: flex; gap: 14px; align-items: baseline; }
 .final span:nth-child(2) { color: var(--cream-dim); }
-.final .a { color: var(--berry); } .final .b { color: var(--tang); }
+.final .a { color: var(--grape-hi); } .final .b { color: var(--lime); }
 .stats-wrap { overflow-x: auto; }
 table.stats { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 table.stats th { text-align: left; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream-dim); font-weight: 800; padding: 4px 6px; }
@@ -404,12 +407,12 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
   <div class="scoreboard">
     <div class="sb-team a" aria-live="polite">
       <div class="sb-blob"><span class="sb-eyes" aria-hidden="true"><i></i><i></i></span><span class="sb-score" id="scoreA">0</span></div>
-      <span class="sb-name">Blueberry</span>
+      <span class="sb-name">Grape</span>
     </div>
     <div class="sb-clock" id="clock">3:00</div>
     <div class="sb-team b" aria-live="polite">
       <div class="sb-blob"><span class="sb-eyes" aria-hidden="true"><i></i><i></i></span><span class="sb-score" id="scoreB">0</span></div>
-      <span class="sb-name">Tangerine</span>
+      <span class="sb-name">Lime</span>
     </div>
   </div>
   <div class="feed" id="feed"></div>
@@ -535,7 +538,7 @@ table.stats tr.me td { color: var(--jelly); font-weight: 800; }
 
 <div class="screen center" id="over" hidden>
   <div class="card result">
-    <h2 id="resultTitle">Blueberry wins</h2>
+    <h2 id="resultTitle">Grape wins</h2>
     <div class="final"><span class="a" id="finalA">0</span><span>&ndash;</span><span class="b" id="finalB">0</span></div>
     <div class="stats-wrap"><table class="stats" id="statsTable"></table></div>
     <p class="net-status" id="overNote" hidden></p>
@@ -638,8 +641,9 @@ const BUMP_GROUND = uuCurve([[0, 0], [1400, 1100], [2200, 1530]]);
 const BUMP_AIR = uuCurve([[0, 0], [2300, 1500]]);
 const BUMP_UP = uuCurve([[0, 0], [1400, 278], [2200, 417]]);
 const TEAM = [
-  { name: 'Blueberry', color: 0x4a86ff, css: '#4a86ff', dir: 1 },  // defends -z, attacks +z
-  { name: 'Tangerine', color: 0xff8a2b, css: '#ff8a2b', dir: -1 }, // defends +z, attacks -z
+  // rgb: the same colour for canvas paint, as in `rgba(${TEAM[t].rgb},0.4)`
+  { name: 'Grape', color: 0x8f5cff, css: '#8f5cff', rgb: '143,92,255', dir: 1 }, // defends -z, attacks +z
+  { name: 'Lime', color: 0x94dc2c, css: '#94dc2c', rgb: '148,220,44', dir: -1 }, // defends +z, attacks -z
 ];
 // Spike Drop mode: the ball sticks to spiky blobs
 const TUNE = { carrySlow: 0.9, bumpLoose: 16, spitMin: 34, spitMax: 92, spitChargeTime: 0.75 };
@@ -943,7 +947,7 @@ function ballNormal(x, y, z, out = _bdn) {
   const l = Math.hypot(nx, ny, nz) || 1;
   return out.set(nx / l, ny / l, nz / l);
 }
-// the membrane under (x, z): 0 = the hole at -z (Blueberry defends it), 1 = the one at +z, -1 = none
+// the membrane under (x, z): 0 = the hole at -z (Grape defends it), 1 = the one at +z, -1 = none
 const membraneAt = (x, z) => (arenaMode.holes && holeR(x, z) < HOLE.r + HOLE.rim ? (z < 0 ? 0 : 1) : -1);
 
 // ---------- shared materials and decal textures ----------
@@ -1177,18 +1181,18 @@ function drawFloor(withText) {
     g.fillStyle = gr; g.beginPath(); g.roundRect(X(x0 + 0.45), Z(z0 + 0.45), (T - 0.9) * S, (T - 0.9) * S, 3 * S); g.fill();
   }
   let gr = g.createLinearGradient(0, Z(-HL), 0, Z(-30));
-  gr.addColorStop(0, 'rgba(74,134,255,0.34)'); gr.addColorStop(1, 'rgba(74,134,255,0)');
+  gr.addColorStop(0, `rgba(${TEAM[0].rgb},0.34)`); gr.addColorStop(1, `rgba(${TEAM[0].rgb},0)`);
   g.fillStyle = gr; g.fillRect(0, 0, W, Z(-30));
   gr = g.createLinearGradient(0, Z(HL), 0, Z(30));
-  gr.addColorStop(0, 'rgba(255,138,43,0.34)'); gr.addColorStop(1, 'rgba(255,138,43,0)');
+  gr.addColorStop(0, `rgba(${TEAM[1].rgb},0.34)`); gr.addColorStop(1, `rgba(${TEAM[1].rgb},0)`);
   g.fillStyle = gr; g.fillRect(0, Z(30), W, H - Z(30));
-  g.fillStyle = 'rgba(74,134,255,0.45)'; g.fillRect(X(-GW), Z(-HL - F.goalD), F.goalW * S, F.goalD * S);
-  g.fillStyle = 'rgba(255,138,43,0.45)'; g.fillRect(X(-GW), Z(HL), F.goalW * S, F.goalD * S);
+  g.fillStyle = `rgba(${TEAM[0].rgb},0.45)`; g.fillRect(X(-GW), Z(-HL - F.goalD), F.goalW * S, F.goalD * S);
+  g.fillStyle = `rgba(${TEAM[1].rgb},0.45)`; g.fillRect(X(-GW), Z(HL), F.goalW * S, F.goalD * S);
   if (withText) {
     g.font = `${17 * S}px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.save(); g.translate(X(0), Z(-HL + 62)); g.fillStyle = 'rgba(74,134,255,0.42)'; g.fillText('BLUEBERRY', 0, 0); g.restore();
-    g.save(); g.translate(X(0), Z(HL - 62)); g.rotate(Math.PI); g.fillStyle = 'rgba(255,138,43,0.42)'; g.fillText('TANGERINE', 0, 0); g.restore();
+    g.save(); g.translate(X(0), Z(-HL + 62)); g.fillStyle = `rgba(${TEAM[0].rgb},0.42)`; g.fillText(TEAM[0].name.toUpperCase(), 0, 0); g.restore();
+    g.save(); g.translate(X(0), Z(HL - 62)); g.rotate(Math.PI); g.fillStyle = `rgba(${TEAM[1].rgb},0.5)`; g.fillText(TEAM[1].name.toUpperCase(), 0, 0); g.restore();
   }
   // lines: edge of the flat floor, halfway line, centre circle, a box with an arc in front of each goal
   g.strokeStyle = g.fillStyle = 'rgba(255,251,244,0.92)'; g.lineWidth = 0.6 * S;
@@ -1381,7 +1385,7 @@ function paintIcing() {
   bg.addColorStop(0, '#4a2470'); bg.addColorStop(1, '#2a1440');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   // candy labels: a pill per word, each its own flavour
-  const words = [['GLOOPBALL', '#fff4e6', '#ff5fa2'], [arenaMode.holes ? 'SINKHOLE' : 'CLASSIC', '#ffe07a', '#ff8a2b'], ['STAY GOOEY', '#7de3c3', '#4a86ff'], ['BOING', '#ffb8d9', '#ff5fa2']];
+  const words = [['GLOOPBALL', '#fff4e6', '#ff5fa2'], [arenaMode.holes ? 'SINKHOLE' : 'CLASSIC', '#ffe07a', '#ff9a3d'], ['STAY GOOEY', '#d9f7b0', TEAM[0].css], ['BOING', '#ffb8d9', '#ff5fa2']];
   const font = (px) => `${px}px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif`;
   let px = 70;
   g.font = font(px);
@@ -1422,7 +1426,7 @@ function paintIcing() {
   sh.addColorStop(0, 'rgba(255,255,255,0.05)'); sh.addColorStop(0.35, 'rgba(255,255,255,0.5)'); sh.addColorStop(0.6, 'rgba(255,255,255,0)');
   g.fillStyle = sh; g.fillRect(0, 0, W, top);
   // sprinkles
-  const cols = ['#fff4e6', '#ffe07a', '#7de3c3', '#4a86ff', '#ff8a2b', '#c48ad9'];
+  const cols = ['#fff4e6', '#ffe07a', '#7de3c3', TEAM[0].css, TEAM[1].css, '#ff8fc4'];
   for (let i = 0; i < 150; i++) {
     const x = rnd() * W, y = 6 + rnd() * (top - 12), a = rnd() * Math.PI;
     g.save(); g.translate(x, y); g.rotate(a);
@@ -2583,7 +2587,7 @@ function drawFascia(goalTeam = -1) {
   candyFinish(g, W, H, goalTeam >= 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,95,162,0.12)');
   const items = goalTeam >= 0
     ? [[goalWord(), '#fff4e6'], [goalWord(), '#24123a'], [goalWord(), '#fff4e6'], [goalWord(), '#24123a']]
-    : [['GLOOPBALL', '#ff6fb0'], [modeLabel(), '#fff4e6'], ['BLUEBERRY', TEAM[0].css], ['TANGERINE', TEAM[1].css]];
+    : [['GLOOPBALL', '#ff6fb0'], [modeLabel(), '#fff4e6'], [TEAM[0].name.toUpperCase(), TEAM[0].css], [TEAM[1].name.toUpperCase(), TEAM[1].css]];
   g.font = `${Math.round(H * 0.58)}px ${SIGN_FONT}`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
   const sweets = ['#ffe07a', '#7de3c3', '#ff5fa2', '#c48ad9'];
@@ -2645,6 +2649,8 @@ function drawScreen() {
 
 const CASTERS = new Set(['Stands', 'Roof', 'RoofLip', 'RoofRibs', 'Columns', 'Towers', 'ScreenFrames', 'SignGLOOPBALL', 'SignSPIKEDROP',
   'Pennants', 'Rail', 'Cannon_0', 'Cannon_1', 'Cannon_2', 'Cannon_3']);
+// the model's seats and flags were painted in the old team colours; these take the current ones at load
+const TEAM_MATS = { SeatBlue: 0, FlagBlue: 0, SeatOrange: 1, FlagOrange: 1 };
 const nodeName = (o) => (o.parent && o.parent.type === 'Group' && o.parent !== stadium.root ? o.parent.name : o.name);
 function setupStadium(root) {
   stadium.root = root;
@@ -2677,6 +2683,7 @@ function setupStadium(root) {
       o.castShadow = false;
       stadium.jellies.push({ mesh: o, ph: rand(0, TAU) });
     } else if (mat.isMeshStandardMaterial) {
+      if (mname in TEAM_MATS) mat.color.set(TEAM[TEAM_MATS[mname]].color); // seats and flags in the team colours
       mat.envMap = envTex;
       mat.envMapIntensity = mat.metalness > 0.3 ? 1.1 : 0.45;
     }
@@ -2849,9 +2856,9 @@ function drawHolesFloor(withText) {
   g.fillStyle = '#5d3f80'; g.fillRect(0, 0, W, H);
   g.save();
   g.beginPath(); octPath(g, X, Z, HW, HL, F.corner); g.clip();
-  // gummy base: blueberry end, lilac middle, tangerine end
+  // gummy base: grape end, lilac and pink middle, lime end
   const base = g.createLinearGradient(0, Z(-HL), 0, Z(HL));
-  base.addColorStop(0, '#aebfff'); base.addColorStop(0.4, '#ecd3f6'); base.addColorStop(0.6, '#f8d6ea'); base.addColorStop(1, '#ffcaa6');
+  base.addColorStop(0, '#cdb8ff'); base.addColorStop(0.4, '#ecd3f6'); base.addColorStop(0.6, '#f8d6ea'); base.addColorStop(1, '#e4f6bf');
   g.fillStyle = base; g.fillRect(0, 0, W, H);
   // candy buttons: staggered rows of round sugar dots in four flavours, faint enough to keep the lines readable
   let seed = 11;
@@ -2867,7 +2874,7 @@ function drawHolesFloor(withText) {
   }
   // around each hole: a team-coloured swirl, like water spiralling down a drain
   for (const t of [0, 1]) {
-    const zc = (t === 0 ? -1 : 1) * HOLE.z, rgb = t === 0 ? '74,134,255' : '255,138,43', spin = t === 0 ? 1 : -1;
+    const zc = (t === 0 ? -1 : 1) * HOLE.z, rgb = TEAM[t].rgb, spin = t === 0 ? 1 : -1;
     const halo = g.createRadialGradient(X(0), Z(zc), HOLE.r * S, X(0), Z(zc), 40 * S);
     halo.addColorStop(0, `rgba(${rgb},0.8)`); halo.addColorStop(0.3, `rgba(${rgb},0.36)`); halo.addColorStop(1, `rgba(${rgb},0)`);
     g.fillStyle = halo; g.fillRect(X(-42), Z(zc - 42), 84 * S, 84 * S);
@@ -2886,8 +2893,8 @@ function drawHolesFloor(withText) {
   if (withText) {
     g.font = `${15 * S}px "Bagel Fat One", "Arial Rounded MT Bold", sans-serif`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.save(); g.translate(X(0), Z(-HOLE.z + 40)); g.fillStyle = 'rgba(74,134,255,0.42)'; g.fillText('BLUEBERRY', 0, 0); g.restore();
-    g.save(); g.translate(X(0), Z(HOLE.z - 40)); g.rotate(Math.PI); g.fillStyle = 'rgba(255,138,43,0.42)'; g.fillText('TANGERINE', 0, 0); g.restore();
+    g.save(); g.translate(X(0), Z(-HOLE.z + 40)); g.fillStyle = `rgba(${TEAM[0].rgb},0.42)`; g.fillText(TEAM[0].name.toUpperCase(), 0, 0); g.restore();
+    g.save(); g.translate(X(0), Z(HOLE.z - 40)); g.rotate(Math.PI); g.fillStyle = `rgba(${TEAM[1].rgb},0.5)`; g.fillText(TEAM[1].name.toUpperCase(), 0, 0); g.restore();
   }
   // edge of the flat floor, a dashed halfway line, the kickoff circle
   g.strokeStyle = g.fillStyle = 'rgba(255,251,244,0.9)'; g.lineWidth = 0.6 * S;
@@ -4580,7 +4587,7 @@ function aiPlay(b, d, dt, T) {
 // goals, and the other game follows it and hides the corrections. The host runs the clock, the kickoffs,
 // overtime and the end of the match.
 const NET = {
-  version: 3, prefix: 'gloopball-r1-',
+  version: 4, prefix: 'gloopball-r1-',
   lib: 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
   sri: 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR',
   home: 'https://eliotdupouy.github.io/gloopball/',
@@ -5321,7 +5328,7 @@ function endMatch() {
   sfx.whistle(); sfx.setBoost(false);
   const [a, b] = game.score;
   $('resultTitle').textContent = game.online ? (a === b ? 'Draw' : (a > b) === (net.team === 0) ? 'You win' : 'Your friend wins')
-    : a > b ? 'Blueberry wins' : 'Tangerine wins';
+    : `${TEAM[a > b ? 0 : 1].name} wins`;
   $('finalA').textContent = a; $('finalB').textContent = b;
   const rows = blobs.slice().sort((x, y) => x.team - y.team || y.stats.goals - x.stats.goals);
   const cols = [['Goals', 'goals'], ['Shots', 'shots'], ['Saves', 'saves'], ['Splats', 'splats']];
