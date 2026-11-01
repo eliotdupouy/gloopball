@@ -500,6 +500,9 @@ const BOT_NAMES = ['Wobbles', 'Jellyroll', 'Gus', 'Mochi', 'Puddle', 'Slurp', 'G
 // Rocket League kickoff spots for the team defending -z (x, z, facing the ball when true); the other team is mirrored
 const KICK_SPOTS = [[-2048, -2560, true], [2048, -2560, true], [-256, -3840, false], [256, -3840, false], [0, -4608, false]]
   .map(([x, z, d]) => [x * UU, z * UU, d]);
+// Sinkhole: the two back spots would sit inside a team's own hole (z = 100) and the far one behind it,
+// so they move beside it and in front of it
+const KICK_SPOTS_HOLES = [KICK_SPOTS[0], KICK_SPOTS[1], [-26, -96, false], [26, -96, false], [0, -78, false]];
 
 // ---------- settings (remembered per viewer) ----------
 const settings = { teamSize: 2, diff: 1, minutes: 3, mode: 'holes', v: 2 };
@@ -2968,10 +2971,15 @@ function stepBall(dt) {
 
 // ---------- blob hits ball: a physical bounce plus Rocket League's extra push on every fresh touch ----------
 const M_BALL = 30, M_BLOB = 180;
+ballVsBlobs.n = 0;
 function ballVsBlobs() {
   if (ball.carrier || game.ballHold || !ball.visible) return;
   const bp = ball.pos, bv = ball.vel, bw = ball.spin;
-  for (const b of blobs) {
+  // blobs that reach the ball in the same step (mirrored kickoffs) take turns going first,
+  // otherwise the same team would always win a tied kickoff
+  const nb = blobs.length, flip = (++ballVsBlobs.n & 1) === 1;
+  for (let k = 0; k < nb; k++) {
+    const b = blobs[flip ? nb - 1 - k : k];
     if (b.splatT > 0) { b.touching = false; continue; }
     const dx = bp.x - b.pos.x, dy = bp.y - b.pos.y, dz = bp.z - b.pos.z;
     const d = Math.hypot(dx, dy, dz), lim = BLOB_R + BALL_R;
@@ -3248,7 +3256,7 @@ function newAI() {
   return {
     think: 0, role: 'attack', man: null, noiseX: 0, dodgeOK: true,
     itT: 9, itI: PRED_N - 1, itKind: 'none', onside: true, score: 0, lined: 1, stuckT: 0, unstuck: 0,
-    target: new V3(), shot: new V3(0, 0, 1), aimX: 0, spitHold: 0, spitHeld: 0, jumpCD: 0, place: false, hitV: 0,
+    target: new V3(), shot: new V3(0, 0, 1), aimX: 0, spitHold: 0, spitHeld: 0, jumpCD: 0, place: false, hitV: 0, kickX: 0,
     stats: { aerials: 0, aerialHits: 0, jumpShots: 0, flips: 0 },
   };
 }
@@ -3304,11 +3312,40 @@ function aiRayHole(x, z, dx, dz, hz, r, far) {
 function aiSafeDir(team, P, out) {
   const cx = -P.x, cz = -TEAM[team].dir * HOLE.z - P.z, D = Math.hypot(cx, cz), r = HOLE.r + 4;
   if (cx * out.x + cz * out.z <= 0) return out;
-  const cross = cx * out.z - cz * out.x;
-  if (D > r && Math.abs(cross) >= r) return out;
-  // past the edge of the hole as seen from the ball, on the side the direction already leans to
-  const a = Math.atan2(cz, cx) + (cross >= 0 ? 1 : -1) * (D > r ? Math.asin(r / D) + 0.06 : 2);
+  // keep out of the cone the hole fills as seen from the ball, with room for a sloppy touch
+  const cross = cx * out.z - cz * out.x, need = D > r ? Math.asin(r / D) + 0.2 : 2;
+  if (Math.asin(Math.min(1, Math.abs(cross) / D)) >= need) return out;
+  // past the edge, on the side the direction already leans to
+  const a = Math.atan2(cz, cx) + (cross >= 0 ? 1 : -1) * need;
   return out.set(Math.cos(a), 0, Math.sin(a));
+}
+// is the ball on its way into the hole this team defends? (predicted to drop in, or rolling straight at it from further out)
+function aiThreat(team) {
+  if (aiPred.goalTeam === 1 - team) return true;
+  const v = ball.vel, s = Math.hypot(v.x, v.z);
+  return ball.pos.y < 4 && s > 6 && aiRayHole(ball.pos.x, ball.pos.z, v.x / s, v.z / s, -TEAM[team].dir * HOLE.z, HOLE.r, 150);
+}
+// about to bump the ball (within 0.6 s) so that it heads for our own hole? Then out is a way round it.
+const _aiG = new V3();
+function aiBadTouch(b, out) {
+  if (ball.pos.y > 6 || ball.carrier) return false;
+  const rx = ball.pos.x - b.pos.x, rz = ball.pos.z - b.pos.z, vx = b.vel.x - ball.vel.x, vz = b.vel.z - ball.vel.z;
+  const R = BALL_R + BLOB_R + 0.4, vv = vx * vx + vz * vz, along = rx * vx + rz * vz;
+  const disc = along * along - vv * (rx * rx + rz * rz - R * R);
+  if (vv < 1 || along <= 0 || disc < 0) return false;
+  const t = Math.max(0, (along - Math.sqrt(disc)) / vv);
+  if (t > 0.6) return false;
+  // the ball leaves along the line between the centres, on top of its own motion (or near enough that)
+  let nx = rx - vx * t, nz = rz - vz * t;
+  const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+  const vn = vx * nx + vz * nz, px = ball.pos.x + ball.vel.x * t, pz = ball.pos.z + ball.vel.z * t, hz = -TEAM[b.team].dir * HOLE.z;
+  let ux = ball.vel.x + 1.6 * vn * nx, uz = ball.vel.z + 1.6 * vn * nz;
+  const ul = Math.hypot(ux, uz) || 1;
+  if (!aiRayHole(px, pz, ux / ul, uz / ul, hz, HOLE.r + 5, 70) && !aiRayHole(px, pz, nx, nz, hz, HOLE.r + 5, 70)) return false;
+  // pass it on the side we're already heading for
+  const side = rx * vz - rz * vx >= 0 ? 1 : -1, vl = Math.sqrt(vv);
+  out.set(ball.pos.x - (vz / vl) * side * 9, BLOB_R, ball.pos.z + (vx / vl) * side * 9);
+  return true;
 }
 // drive round the membranes, not over them: touching one throws a blob up in the air.
 // A target on a membrane is moved to its edge, unless we mean to go there (onHole: a save).
@@ -3504,6 +3541,7 @@ function aiGoalExit(b, target) {
 }
 function aiDrive(b, d, target, speed, boostOK, onHole = false) {
   const c = b.ctrl;
+  if (arenaMode.holes && aiBadTouch(b, _aiG)) target = _aiG;
   _aiA.copy(aiUnfold(b, arenaMode.holes ? aiHoleAvoid(b, target, onHole) : aiGoalExit(b, target))).sub(b.pos);
   const lx = _aiA.dot(b.left), lz = _aiA.dot(b.fwd), dist = Math.hypot(lx, lz);
   const ang = Math.atan2(-lx, lz), vf = b.vel.dot(b.fwd);
@@ -3682,19 +3720,22 @@ function aiShotDir(b, P, out, V) {
   l = Math.hypot(sx, sz) || 1;
   return out.set(sx / l, 0, sz / l);
 }
+// ball speed gained per unit of closing speed in a square hit: the bounce (1.1 x 6/7) plus the Psyonix push
+const aiHitGain = (c) => 0.94 + curve(HIT_CURVE, c);
+const _aiS = new V3();
 // Sinkhole: roll the ball into the middle of their hole when lined up, otherwise clear it upfield and wide;
 // never toward our own hole. A ball sent over their hole must arrive slowly or it skips across (ai.place),
 // so this also works out the closing speed for that (ai.hitV). out is the line to hit along: it allows for
 // the way the ball already moves across the line we want it to leave on.
-// ball speed gained per unit of closing speed in a square hit: the bounce (1.1 x 6/7) plus the Psyonix push
-const aiHitGain = (c) => 0.94 + curve(HIT_CURVE, c);
-const _aiS = new V3();
 function aiShotDirHoles(b, P, out, V) {
   const ai = b.ai, dir = TEAM[b.team].dir, hz = dir * HOLE.z;
-  let sx = ai.noiseX * 0.35 - P.x, sz = hz - P.z;
-  const D = Math.hypot(sx, sz) || 1; sx /= D; sz /= D;
   let ax = P.x - b.pos.x, az = P.z - b.pos.z, l = Math.hypot(ax, az) || 1;
   ax /= l; az /= l;
+  // it's on its way into our hole and we're in its way: no time to line anything up, block it the way we're going
+  ai.place = false;
+  if (aiThreat(b.team) && aiHomeR(b.team, b.pos) < aiHomeR(b.team, P)) return aiSafeDir(b.team, P, out.set(ax, 0, az));
+  let sx = ai.noiseX * 0.7 - P.x, sz = hz - P.z; // the aim wanders with skill: Rookies often miss
+  const D = Math.hypot(sx, sz) || 1; sx /= D; sz /= D;
   const align = ax * sx + az * sz, deep = P.z * dir < -HL * 0.4;
   if (align < 0.35 || deep) {
     let cx = P.x >= 0 ? 0.75 : -0.75, cz = dir;
@@ -3703,12 +3744,14 @@ function aiShotDirHoles(b, P, out, V) {
     sx = sx * w + (ax * 0.6 + cx * 0.4) * (1 - w); sz = sz * w + (az * 0.6 + cz * 0.4) * (1 - w);
     l = Math.hypot(sx, sz) || 1; sx /= l; sz /= l;
   }
+  // in our half, never back toward our end wall: the ball comes off it over our hole. Sideways instead.
+  if (P.z * dir < 0 && sz * dir < -0.1) { sx = (Math.abs(sx) > 0.05 ? Math.sign(sx) : P.x >= 0 ? 1 : -1) * 0.995; sz = -0.1 * dir; }
   const s = aiSafeDir(b.team, P, _aiS.set(sx, 0, sz));
   ai.place = aiRayHole(P.x, P.z, s.x, s.z, hz, HOLE.r + 2, 120);
-  const S = ai.place ? clamp(20 + D * 0.12, 22, 34) : 60; // a struck ball slides and slows, so longer shots start faster
+  const S = ai.place ? clamp(22 + D * 0.14, 24, 37) : 60; // a struck ball slides and slows, so longer shots start faster
   // the push the ball needs to go from its own velocity to S along s; it goes off along the line we hit it on,
   // plus a kick sideways from its sidespin rubbing on us
-  const ws = 0.18 * BALL_R * ball.spin.y, vx = (V ? V.x : 0) + ws * s.z, vz = (V ? V.z : 0) - ws * s.x;
+  const ws = 0.13 * BALL_R * ball.spin.y, vx = (V ? V.x : 0) + ws * s.z, vz = (V ? V.z : 0) - ws * s.x;
   let nx = s.x * S - vx, nz = s.z * S - vz;
   const need = Math.hypot(nx, nz);
   if (need < 3) { ai.hitV = vx * s.x + vz * s.z - 3; return out.copy(s); } // already going right: hang back
@@ -3910,7 +3953,9 @@ function aiPark(b, d, tgt, cap, boostOK, stop) {
 function aiKickoff(b, d, T) {
   const dir = TEAM[b.team].dir, c = b.ctrl;
   if (T.kicker !== b) { if (T.keeper === b) aiKeeper(b, d); else aiSupport(b, d); return; }
-  b.ai.target.set(clamp(-b.pos.x * 0.03, -0.6, 0.6), BLOB_R, -dir * 1.5);
+  // Sinkhole: a little off centre, picked afresh each kickoff, so the two kickers don't always cancel out the same way
+  if (game.frozen) b.ai.kickX = arenaMode.holes ? rand(-1.2, 1.2) : 0;
+  b.ai.target.set(clamp(-b.pos.x * 0.03, -0.6, 0.6) + b.ai.kickX, BLOB_R, -dir * 1.5);
   aiDrive(b, d, b.ai.target, RL.maxSpeed, true);
   c.throttle = d.throttle;
   const dist = Math.hypot(b.pos.x, b.pos.z), vf = b.vel.dot(b.fwd);
@@ -4719,7 +4764,7 @@ function kickoff(order, tGo, n) {
   if (!order) order = shuffle([0, 1, 2, 3, 4]);
   game.kickN = n || game.kickN + 1;
   for (const b of blobs) {
-    const [x, z, faceBall] = KICK_SPOTS[order[b.slot]], dir = TEAM[b.team].dir;
+    const [x, z, faceBall] = (game.holes ? KICK_SPOTS_HOLES : KICK_SPOTS)[order[b.slot]], dir = TEAM[b.team].dir;
     const px = x * dir, pz = z * dir;
     placeBlob(b, px, pz, faceBall ? Math.atan2(-px, -pz) : dir > 0 ? 0 : Math.PI);
     Object.assign(b, {
