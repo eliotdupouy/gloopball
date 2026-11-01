@@ -614,13 +614,18 @@ const F = { W: 216, L: 270, H: 54, corner: 212, ramp: 7.5, goalW: 47, goalH: 16.
 const HW = F.W / 2, HL = F.L / 2, GW = F.goalW / 2;
 const BLOB_R = 1.7, BALL_R = 91.25 * UU;
 const GRAVITY = 650 * UU;
+// the ball floats a little more than the blobs, so it hangs in the air longer for a hit
+const BALL_GRAVITY = GRAVITY * 0.85;
 const RL = {
   maxSpeed: 2300 * UU, supersonic: 2200 * UU, throttleMax: 1410 * UU,
-  boostAccel: 991.666 * UU, airThrottle: 66.667 * UU, brake: 3500 * UU, coast: 525 * UU, boostUse: 33.3,
+  // coast: slowing down with nothing pressed (Rocket League's 525 uu/s² rolls on for 2.7 s; this stops in 1.7 s)
+  boostAccel: 991.666 * UU, airThrottle: 66.667 * UU, brake: 3500 * UU, coast: 840 * UU, boostUse: 33.3,
   jump: 291.667 * UU, jumpHold: 1458.333 * UU, jumpHoldTime: 0.2, flipWindow: 1.25,
   dodge: 500 * UU, flipTime: 0.65, flipSpin: 80, maxSpin: 5.5,
   // air control: torque per unit of stick and damping (rad/s^2 and 1/s), from measurements of the game
   airT: { pitch: 12.146, yaw: 8.92, roll: 36.08 }, airD: { pitch: 2.798, yaw: 1.886, roll: 4.472 },
+  // a let-go turn in the air stops in a fraction of a second (Rocket League's yaw damping, airD.yaw, lets it drift on)
+  airYawStop: 5,
   ballMax: 6000 * UU, ballSpin: 6, ballDrag: 0.0305, ballBounce: 0.6, ballMu: 0.35, // ballMu: ball vs arena (blob vs ball uses 2)
   // the extra "Psyonix" push a car gives the ball on every fresh touch
   hitZ: 0.35, hitFwd: 0.65, hitMaxRel: 4600 * UU,
@@ -1887,7 +1892,10 @@ function makeIcosphere(detail) {
 const JELLY_SPHERE = makeIcosphere(J_DETAIL);
 
 // shared per-team materials and feature geometry
-const jellyMats = [0, 1].map((t) => makeJellyMaterial(TEAM[t].color));
+// clear gummy: full transmission, a smooth surface to see through, and a lighter tint that still reads the team
+const jellyMats = [0, 1].map((t) => makeJellyMaterial(TEAM[t].color, {
+  transmission: 1, rough: 0.08, milk: 0.5, atten: 2.4, thick: 1.0, thin: 0.1, glow: 0.05, sss: 0.9, rim: 0.32,
+}));
 const coreMats = [0, 1].map((t) => new THREE.MeshStandardMaterial({
   color: new THREE.Color(TEAM[t].color).lerp(new THREE.Color(0xffffff), 0.3), emissive: TEAM[t].color, emissiveIntensity: 1.6, roughness: 0.35,
 }));
@@ -3173,6 +3181,7 @@ function driveStep(b, dt, locked, press) {
 
 function jump(b) {
   b.vel.addScaledVector(b.up, RL.jump);
+  b.w.set(0, 0, 0); // a hop flies straight: the turn it was in doesn't keep spinning it in the air
   b.grounded = false; b.jumped = true; b.jumping = true; b.jumpT = 0; b.sinceJump = 0;
   b.hasFlip = true; b.flipping = false; b.noGround = 0.12; b.airT = 0;
   b.sqv += 2.6;
@@ -3189,7 +3198,8 @@ function airStep(b, dt, locked, press) {
   }
   // second jump: a stick direction makes it a dodge; flips stay available forever after falling off something
   if (press && b.hasFlip && (!b.jumped || b.sinceJump < RL.flipWindow)) {
-    const fx = -c.pitch, sx = c.steer;
+    // the flip direction reads the keys as held (the player's pitch can be held back from turning the blob)
+    const fx = -(c.dodgePitch ?? c.pitch), sx = c.steer;
     if (Math.max(Math.abs(fx), Math.abs(sx)) >= 0.5) dodge(b, fx, sx);
     else {
       v.addScaledVector(b.up, RL.jump);
@@ -3203,7 +3213,7 @@ function airStep(b, dt, locked, press) {
   const up = locked ? 0 : c.pitch, uy = locked ? 0 : c.yaw, ur = locked ? 0 : c.roll;
   // torque from the sticks; pitch and yaw only damp when let go, roll always damps
   let ap = RL.airT.pitch * up - RL.airD.pitch * (1 - Math.abs(up)) * wp;
-  const ay = -RL.airT.yaw * uy - RL.airD.yaw * (1 - Math.abs(uy)) * wy;
+  const ay = -RL.airT.yaw * uy - RL.airYawStop * (1 - Math.abs(uy)) * wy;
   let ar = RL.airT.roll * ur - RL.airD.roll * wr;
   if (b.flipping) {
     b.flipT += dt;
@@ -3298,7 +3308,7 @@ function bounceMembrane(b, m, vn) {
 // One step of ball flight against the arena; shared by the real ball and every prediction.
 const _bn = new V3();
 function ballStep(p, v, w, dt) {
-  v.y -= GRAVITY * dt;
+  v.y -= BALL_GRAVITY * dt;
   v.multiplyScalar(1 - RL.ballDrag * dt);
   const sp = v.length();
   if (sp > RL.ballMax) v.multiplyScalar(RL.ballMax / sp);
@@ -3926,7 +3936,7 @@ function aiOrient(b, fwdT, upT) {
   _aiW.sub(b.w).multiplyScalar(1 / 0.12);
   const wp = -b.w.dot(b.left), wy = b.w.dot(b.up), wr = b.w.dot(b.fwd);
   c.pitch = clamp((-_aiW.dot(b.left) + RL.airD.pitch * wp) / RL.airT.pitch, -1, 1);
-  c.yaw = clamp(-(_aiW.dot(b.up) + RL.airD.yaw * wy) / RL.airT.yaw, -1, 1);
+  c.yaw = clamp(-(_aiW.dot(b.up) + RL.airYawStop * wy) / RL.airT.yaw, -1, 1);
   c.roll = clamp((_aiW.dot(b.fwd) + RL.airD.roll * wr) / RL.airT.roll, -1, 1);
   return ang;
 }
@@ -4587,7 +4597,7 @@ function aiPlay(b, d, dt, T) {
 // goals, and the other game follows it and hides the corrections. The host runs the clock, the kickoffs,
 // overtime and the end of the match.
 const NET = {
-  version: 4, prefix: 'gloopball-r1-',
+  version: 5, prefix: 'gloopball-r1-',
   lib: 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js',
   sri: 'sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR',
   home: 'https://eliotdupouy.github.io/gloopball/',
@@ -5457,15 +5467,17 @@ function updateHUD() {
 }
 
 // ---------- camera ----------
-// Rocket League style. Ball cam keeps the blob low in the frame with the ball ahead; car cam looks where the
-// blob faces. While the blob is on a wall or the ceiling the view rolls with that surface. The camera never
-// leaves the arena.
+// Ball cam keeps the blob low in the frame with the ball ahead; car cam looks where the blob faces. While the
+// blob is on a wall the view rolls with that surface, so steering still reads left and right. The camera
+// never leaves the arena: when a wall or the floor is in the way it swings up over the blob instead of
+// closing in on it.
 const cam = {
   pos: new V3(0, 30, -150), look: new V3(), up: new V3(0, 1, 0), dir: new V3(0, 0, 1), pivot: new V3(),
-  ballCam: true, snap: true, orbit: 0, wasOut: true,
+  surf: new V3(0, 1, 0), ballCam: true, snap: true, orbit: 0, wasOut: true,
 };
-const CAM = { dist: 9.6, height: 3.7, ahead: 11, lift: 1.2 };
-const _dp = new V3(), _dl = new V3(), _cd = new V3(), _cu = new V3(), _cn = new V3(), _ch = new V3(), _CZ = new V3(0, 0, 1);
+// clear: how far the camera stays off any surface; keep: the most the blob may sit off the view's centre (rad)
+const CAM = { dist: 9.6, height: 3.7, ahead: 11, lift: 1.2, clear: 1.4, keep: 0.45 };
+const _dp = new V3(), _dl = new V3(), _cd = new V3(), _cu = new V3(), _cn = new V3(), _ch = new V3(), _cf = new V3(), _CZ = new V3(0, 0, 1);
 const _qc = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 // push a point out of the walls until it is at least margin inside the arena
 function keepInArena(p, margin) {
@@ -5474,6 +5486,25 @@ function keepInArena(p, margin) {
     if (d >= margin) return;
     p.addScaledVector(arenaNormal(p.x, p.y, p.z, _cn), margin - d);
   }
+}
+// Swing the camera (at p, on an arm from the pivot) up toward `up` until it is at least margin clear of every
+// arena surface, keeping the arm's length so the blob never looms. A straight push is the last resort.
+const _arm = new V3(), _armT = new V3(), _armV = new V3();
+function swingClear(pivot, p, up, margin, back) {
+  if (arenaDist(p.x, p.y, p.z) >= margin) return;
+  _arm.subVectors(p, pivot);
+  const L = _arm.length(), a = _arm.dot(up);
+  flatten(_armT, _arm, up);
+  if (_armT.lengthSq() < 1e-6) flatten(_armT, back, up).negate();
+  const tl = _armT.length();
+  if (tl < 1e-4 || L < 1e-3) { keepInArena(p, margin); return; }
+  _armT.multiplyScalar(1 / tl);
+  const at = (phi) => _armV.copy(_armT).multiplyScalar(Math.cos(phi) * L).addScaledVector(up, Math.sin(phi) * L).add(pivot);
+  const clear = (v) => arenaDist(v.x, v.y, v.z) >= margin;
+  let lo = Math.atan2(a, tl), hi = 1.4;
+  if (lo >= hi || !clear(at(hi))) { keepInArena(p, margin); return; }
+  for (let i = 0; i < 9; i++) { const mid = (lo + hi) / 2; if (clear(at(mid))) hi = mid; else lo = mid; }
+  p.copy(at(hi));
 }
 const flatten = (out, v, u) => out.copy(v).addScaledVector(u, -v.dot(u));
 // turn unit vector v a fraction t of the way to target (a half turn goes round the hint axis)
@@ -5504,8 +5535,12 @@ function updateCamera(dt) {
     cam.pos.lerp(_dp, k(4)); cam.look.lerp(_dl, k(6));
   } else {
     const useBall = cam.ballCam && ball.carrier !== p && ball.visible;
-    // the camera's up: the surface under the blob while it drives on one, world up in the air
-    _cu.copy(p.grounded ? p.normal : _Y);
+    // the camera's up: the surface under the blob while it drives on one, world up in the air. After leaving
+    // a surface the roll holds for a moment, so a hop or a bump doesn't swing the horizon back and forth.
+    if (p.grounded) cam.surf.copy(p.normal);
+    else if (p.airT > 0.3) cam.surf.copy(_Y);
+    _cu.copy(cam.surf);
+    const wall = clamp((0.85 - _cu.y) / 0.5, 0, 1); // 0 on the floor, 1 on a wall
     // aim at the ball, or along the blob's nose (held still mid-flip in car cam)
     if (useBall) _cd.subVectors(ball.pos, p.pos);
     else if (p.flipping && !p.grounded) _cd.copy(cam.dir);
@@ -5521,11 +5556,19 @@ function updateCamera(dt) {
     _ch.normalize();
     let el = Math.asin(s);
     el = useBall ? clamp(el, -0.4, 1.0) * 0.72 : p.grounded ? 0 : clamp(el, -0.5, 0.5) * 0.6;
+    // On a wall the ball is nearly always out in the arena, straight "above" the blob: aiming at it would pin
+    // the camera flat against the wall. So ball cam mostly follows the blob's way along the wall, tilted up
+    // only as far as keeps the camera off the wall (the arrow points at the ball).
+    if (useBall && wall > 0) {
+      flatten(_cf, p.fwd, _cu);
+      if (_cf.lengthSq() > 0.01) turnToward(_ch, _cf.normalize(), wall * 0.85, _cu);
+      el = Math.min(el, lerp(0.72, 0.16, wall));
+    }
     _cd.copy(_ch).multiplyScalar(Math.cos(el)).addScaledVector(_cu, Math.sin(el));
     if (cam.snap) { cam.dir.copy(_cd); cam.up.copy(_cu); cam.pivot.copy(p.pos); }
     else {
       turnToward(cam.dir, _cd, k(useBall ? 8 : 6), cam.up);
-      turnToward(cam.up, _cu, k(4), cam.dir);
+      turnToward(cam.up, _cu, k(5.5), cam.dir);
       // the pivot trails the blob slightly, so speed reads and landings don't jolt the view
       cam.pivot.lerp(p.pos, k(28));
     }
@@ -5534,7 +5577,14 @@ function updateCamera(dt) {
     // looking up swings the camera lower, so a high ball stays in view with the blob near the bottom
     _dp.copy(cam.pivot).addScaledVector(cam.dir, -dist).addScaledVector(cam.up, CAM.height);
     _dl.copy(cam.pivot).addScaledVector(cam.dir, CAM.ahead).addScaledVector(cam.up, CAM.lift);
-    keepInArena(_dp, 1.0);
+    swingClear(cam.pivot, _dp, cam.up, CAM.clear, cam.dir);
+    // after swinging over the blob, aim down at it enough to keep it in the frame
+    _cf.subVectors(_dl, _dp);
+    const lookLen = _cf.length();
+    _cf.multiplyScalar(1 / lookLen);
+    _ch.subVectors(p.pos, _dp).normalize();
+    const off = Math.acos(clamp(_cf.dot(_ch), -1, 1));
+    if (off > CAM.keep) { turnToward(_cf, _ch, (off - CAM.keep) / off, cam.up); _dl.copy(_dp).addScaledVector(_cf, lookLen); }
     cam.pos.copy(_dp); cam.look.copy(_dl);
   }
   cam.snap = false;
@@ -5617,15 +5667,28 @@ function updateVisuals(dt) {
 }
 
 // ---------- player controls and global keys ----------
+// A direction held since before leaving the ground (W to drive, A or D to turn) doesn't tip or spin the blob
+// in the air, so a hop lands the way it took off instead of nose-first or sideways (which threw away most of
+// the speed). Let go and press it again to aim in the air. Flips still read the keys as held.
+const airHold = { pitch: 0, yaw: 0 };
 function applyPlayerControls() {
   const p = game.player, c = p.ctrl, ctl = readControls(game.spike);
   c.throttle = ctl.throttle; c.steer = ctl.steer; c.pitch = ctl.pitch; c.yaw = ctl.yaw; c.roll = ctl.roll;
   c.handbrake = ctl.handbrake; c.boost = ctl.boost; c.jump = ctl.jump; c.spike = ctl.spike;
   if (ctl.jumpPressed) c.jumpPressed = true; // kept until a physics step uses it
+  c.dodgePitch = ctl.pitch;
+  const sp = Math.sign(ctl.pitch), sy = Math.sign(ctl.yaw);
+  if (p.grounded) { airHold.pitch = sp; airHold.yaw = sy; }
+  else {
+    if (sp !== airHold.pitch) airHold.pitch = 0;
+    if (sy !== airHold.yaw) airHold.yaw = 0;
+    if (airHold.pitch) c.pitch = 0;
+    if (airHold.yaw) c.yaw = 0;
+  }
   sfx.setBoost(p.boosting);
 }
 function releaseControls(p) {
-  Object.assign(p.ctrl, { throttle: 0, steer: 0, pitch: 0, yaw: 0, roll: 0, jump: false, jumpPressed: false, boost: false, handbrake: false, spike: false });
+  Object.assign(p.ctrl, { throttle: 0, steer: 0, pitch: 0, dodgePitch: 0, yaw: 0, roll: 0, jump: false, jumpPressed: false, boost: false, handbrake: false, spike: false });
   sfx.setBoost(false);
 }
 function handleGlobalKeys() {
