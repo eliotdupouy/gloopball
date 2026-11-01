@@ -4578,7 +4578,7 @@ function netApplyBall(a, age) {
 // ---------- the friend panel ----------
 const NET_NOTES = {
   left: 'Your friend left. They can come back with the same link.',
-  quit: 'Your friend left the match.',
+  quit: 'Your friend went back to the menu.',
   offline: 'Can’t reach the online server. Trying again…',
 };
 function netStatusText() {
@@ -4596,7 +4596,7 @@ function netStatusText() {
   const say = (...parts) => parts.filter(Boolean).join(' ');
   if (net.meReady && !net.friendReady) return say(note, 'Waiting for your friend to press Ready.', who);
   if (!net.meReady && net.friendReady) return say('Your friend is ready. Press Ready to start.', who);
-  return say(note, 'Your friend is here. Press Ready when you are.', who);
+  return say(note, net.note === 'quit' ? 'Press Ready to play again.' : 'Your friend is here. Press Ready when you are.', who);
 }
 function netUI() {
   if (!net.booted) return;
